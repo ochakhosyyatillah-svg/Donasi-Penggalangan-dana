@@ -3,7 +3,7 @@ $page_title   = 'Galang Dana - SIBERASA';
 $page_desc    = 'Mulai galang dana untuk program sosial, pendidikan, kemanusiaan, dan lainnya bersama SIBERASA.';
 $current_page = 'galangdana';
 
-require_once 'includes/header.php';
+require_once '../includes/header.php';
 ?>
 
 <!-- Google Fonts: Caveat for cursive accent text -->
@@ -881,4 +881,4 @@ function submitCekStatus(e) {
 }
 </script>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php require_once '../includes/footer.php'; ?>

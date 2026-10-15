@@ -19,11 +19,11 @@
                 <h5>Tautan Cepat</h5>
                 <ul>
                     <li><a href="/Donasi/"><i class="fas fa-chevron-right"></i> Beranda</a></li>
-                    <li><a href="/Donasi/program.php"><i class="fas fa-chevron-right"></i> Program Donasi</a></li>
-                    <li><a href="/Donasi/galangdana.php"><i class="fas fa-chevron-right"></i> Galang Dana</a></li>
-                    <li><a href="/Donasi/cek_status.php"><i class="fas fa-chevron-right"></i> Cek Status</a></li>
-                    <li><a href="/Donasi/tentang.php"><i class="fas fa-chevron-right"></i> Tentang Kami</a></li>
-                    <li><a href="/Donasi/kontak.php"><i class="fas fa-chevron-right"></i> Kontak</a></li>
+                    <li><a href="/Donasi/donatur/program.php"><i class="fas fa-chevron-right"></i> Program Donasi</a></li>
+                    <li><a href="/Donasi/donatur/galangdana.php"><i class="fas fa-chevron-right"></i> Galang Dana</a></li>
+                    <li><a href="/Donasi/donatur/cek_status.php"><i class="fas fa-chevron-right"></i> Cek Status</a></li>
+                    <li><a href="/Donasi/donatur/tentang.php"><i class="fas fa-chevron-right"></i> Tentang Kami</a></li>
+                    <li><a href="/Donasi/donatur/kontak.php"><i class="fas fa-chevron-right"></i> Kontak</a></li>
                 </ul>
             </div>
             

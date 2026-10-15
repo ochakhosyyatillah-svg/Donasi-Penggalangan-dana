@@ -4,7 +4,7 @@ session_start();
 // Pastikan pengguna sudah login
 if (!isset($_SESSION['id_user']) ||
     $_SESSION['role'] !== 'pengusul') {
-    header('Location: ../login.php');
+    header('Location: /Donasi/donatur/login.php');
     exit;
 }
 ?>

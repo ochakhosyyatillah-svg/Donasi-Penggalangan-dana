@@ -1,5 +1,5 @@
 <?php
-require_once 'includes/data.php';
+require_once '../includes/data.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 1;
 $prog = null;
@@ -16,7 +16,7 @@ $page_title = htmlspecialchars($prog['judul']) . ' - SIBERASA';
 $page_desc  = 'Dukung program ' . $prog['judul'] . ' oleh ' . $prog['penyelenggara'];
 $current_page = 'program';
 
-require_once 'includes/header.php';
+require_once '../includes/header.php';
 ?>
 
 <div style="background: #f0f6ff; min-height: 100vh; padding: 40px 0;">
@@ -108,4 +108,4 @@ require_once 'includes/header.php';
     </div>
 </div>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php require_once '../includes/footer.php'; ?>

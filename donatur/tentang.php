@@ -2,8 +2,8 @@
 $page_title   = 'Tentang Kami - SIBERASA';
 $page_desc    = 'Pelajari tentang SIBERASA, misi kami, dan tim yang berdedikasi untuk menghubungkan donatur dengan program kemanusiaan.';
 $current_page = 'tentang';
-require_once 'includes/data.php';
-require_once 'includes/header.php';
+require_once '../includes/data.php';
+require_once '../includes/header.php';
 ?>
 
 <!-- BANNER -->
@@ -156,4 +156,4 @@ require_once 'includes/header.php';
     <div class="container"><div class="footer-bottom"><p>&copy; <?= date('Y') ?> SIBERASA.</p></div></div>
 </footer>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php require_once '../includes/footer.php'; ?>

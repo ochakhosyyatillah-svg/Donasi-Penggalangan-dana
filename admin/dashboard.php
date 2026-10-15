@@ -4,7 +4,7 @@ require_once __DIR__ . '/../assets/config/database.php';
 
 // Pastikan pengguna sudah login sebagai admin
 if (!isset($_SESSION['id_user']) || $_SESSION['role'] !== 'admin') {
-    header('Location: ../login.php');
+    header('Location: /Donasi/donatur/login.php');
     exit;
 }
 
@@ -678,13 +678,13 @@ ul{list-style:none}
         </a>
       </li>
       <li class="nav-item">
-        <a href="#" class="nav-link" id="nav-program">
+        <a href="kelola_program.php" class="nav-link" id="nav-program">
           <i class="fas fa-hand-holding-usd"></i>
           <span>Kelola Program Donasi</span>
         </a>
       </li>
       <li class="nav-item">
-        <a href="#" class="nav-link" id="nav-pengguna">
+        <a href="kelola_pengguna.php" class="nav-link" id="nav-pengguna">
           <i class="fas fa-users"></i>
           <span>Kelola Pengguna</span>
         </a>

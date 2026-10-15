@@ -1,5 +1,5 @@
 <?php
-require_once 'includes/data.php';
+require_once '../includes/data.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 1;
 $prog = null;
@@ -16,7 +16,7 @@ $page_title = 'Formulir Donasi - ' . htmlspecialchars($prog['judul']);
 $page_desc  = 'Formulir donasi untuk program ' . htmlspecialchars($prog['judul']);
 $current_page = 'program';
 
-require_once 'includes/header.php';
+require_once '../includes/header.php';
 ?>
 
 <div style="background: #f4f8fb; min-height: 100vh; padding: 40px 0;">
@@ -392,4 +392,4 @@ document.getElementById('inputNominal').addEventListener('input', function() {
 updateSummary();
 </script>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php require_once '../includes/footer.php'; ?>

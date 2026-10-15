@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/assets/config/database.php';
+require_once __DIR__ . '/../assets/config/database.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nama = trim($_POST['name'] ?? '');
@@ -360,7 +360,7 @@ body{
 
     <!-- Sudah punya akun -->
     <p class="foot-text">
-      Sudah punya akun? <a href="login.php">Login disini</a>
+      Sudah punya akun? <a href="/Donasi/donatur/login.php">Login disini</a>
     </p>
 
   </div>

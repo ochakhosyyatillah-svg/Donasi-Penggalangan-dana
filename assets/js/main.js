@@ -188,9 +188,9 @@ if (searchInput) {
 // ============================================
 function openModal(tab = 'masuk') {
     if (tab === 'masuk') {
-        window.location.href = '/Donasi/login.php';
+        window.location.href = '/Donasi/donatur/login.php';
     } else {
-        window.location.href = '/Donasi/register.php';
+        window.location.href = '/Donasi/donatur/register.php';
     }
 }
 

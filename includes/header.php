@@ -40,17 +40,17 @@ $page_desc = $page_desc ?? 'SIBERASA adalah platform donasi online terpercaya. B
 
         <ul class="nav-links" id="navLinks">
             <li><a href="/Donasi/" class="<?= ($current_page === 'beranda') ? 'active' : '' ?>">Beranda</a></li>
-            <li><a href="/Donasi/program.php" class="<?= ($current_page === 'program') ? 'active' : '' ?>">Program Donasi</a></li>
-            <li><a href="/Donasi/galangdana.php" class="<?= ($current_page === 'galangdana') ? 'active' : '' ?>">Galang Dana</a></li>
-            <li><a href="/Donasi/tentang.php" class="<?= ($current_page === 'tentang') ? 'active' : '' ?>">Tentang Kami</a></li>
-            <li><a href="/Donasi/kontak.php" class="<?= ($current_page === 'kontak') ? 'active' : '' ?>">Kontak</a></li>
+            <li><a href="/Donasi/donatur/program.php" class="<?= ($current_page === 'program') ? 'active' : '' ?>">Program Donasi</a></li>
+            <li><a href="/Donasi/donatur/galangdana.php" class="<?= ($current_page === 'galangdana') ? 'active' : '' ?>">Galang Dana</a></li>
+            <li><a href="/Donasi/donatur/tentang.php" class="<?= ($current_page === 'tentang') ? 'active' : '' ?>">Tentang Kami</a></li>
+            <li><a href="/Donasi/donatur/kontak.php" class="<?= ($current_page === 'kontak') ? 'active' : '' ?>">Kontak</a></li>
         </ul>
 
 
 
         <div class="nav-actions">
-            <button class="btn btn-primary" id="btnMasuk" onclick="window.location.href='/Donasi/login.php'">Masuk</button>
-            <button class="btn btn-outline" id="btnDaftar" onclick="window.location.href='/Donasi/register.php'">Daftar</button>
+            <button class="btn btn-primary" id="btnMasuk" onclick="window.location.href='/Donasi/donatur/login.php'">Masuk</button>
+            <button class="btn btn-outline" id="btnDaftar" onclick="window.location.href='/Donasi/donatur/register.php'">Daftar</button>
         </div>
 
         <button class="hamburger" id="hamburger" aria-label="Menu" onclick="toggleMobileMenu()">

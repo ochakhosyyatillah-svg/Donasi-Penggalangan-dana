@@ -6,7 +6,7 @@ $current_page = 'cek_status';
 // Ambil kode dari GET parameter jika ada
 $kode = isset($_GET['kode']) ? trim($_GET['kode']) : (isset($_GET['trx']) ? trim($_GET['trx']) : '');
 
-require_once 'includes/header.php';
+require_once '../includes/header.php';
 ?>
 
 <!-- ═══════════════════════════════════════════════════════════════════
@@ -901,4 +901,4 @@ document.addEventListener('DOMContentLoaded', function() {
 <?php endif; ?>
 </script>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php require_once '../includes/footer.php'; ?>

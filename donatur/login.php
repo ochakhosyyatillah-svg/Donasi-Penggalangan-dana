@@ -3,7 +3,7 @@
 <?php
 session_start();
 
-require_once __DIR__ . '/assets/config/database.php';
+require_once __DIR__ . '/../assets/config/database.php';
 
 $error = $_GET['error'] ?? '';
 
@@ -23,18 +23,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Periksa email dan password
         if (!$user || !password_verify($password, $user['password'])) {
-            header('Location: login.php?error=invalid');
+            header('Location: /Donasi/donatur/login.php?error=invalid');
             exit;
         }
 
         // Periksa status akun
         if ($user['status_verifikasi'] === 'menunggu') {
-            header('Location: login.php?error=pending');
+            header('Location: /Donasi/donatur/login.php?error=pending');
             exit;
         }
 
         if ($user['status_verifikasi'] !== 'diterima') {
-            header('Location: login.php?error=rejected');
+            header('Location: /Donasi/donatur/login.php?error=rejected');
             exit;
         }
 
@@ -48,12 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Arahkan sesuai role akun
         if ($user['role'] === 'admin') {
-            header('Location: admin/dashboard.php');
+            header('Location: /Donasi/admin/dashboard.php');
             exit;
         }
 
         if ($user['role'] === 'pengusul') {
-            header('Location: pengusul/dashboard.php');
+            header('Location: /Donasi/pengusul/dashboard.php');
             exit;
         }
 
@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         session_unset();
         session_destroy();
 
-        header('Location: login.php?error=role');
+        header('Location: /Donasi/donatur/login.php?error=role');
         exit;
 
     } catch (PDOException $e) {
@@ -375,7 +375,7 @@ body{
 
     <p class="foot-text">
       Belum punya akun?
-      <a href="/Donasi/register.php">Daftar sekarang</a>
+      <a href="/Donasi/donatur/register.php">Daftar sekarang</a>
     </p>
 
   </div>

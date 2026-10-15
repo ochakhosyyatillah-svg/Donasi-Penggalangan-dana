@@ -2,8 +2,8 @@
 $page_title   = 'Kontak - SIBERASA';
 $page_desc    = 'Hubungi tim SIBERASA untuk pertanyaan, saran, atau kolaborasi program donasi.';
 $current_page = 'kontak';
-require_once 'includes/data.php';
-require_once 'includes/header.php';
+require_once '../includes/data.php';
+require_once '../includes/header.php';
 
 $success = false;
 $errors  = [];
@@ -238,4 +238,4 @@ function toggleFaq(i) {
 }
 </script>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php require_once '../includes/footer.php'; ?>

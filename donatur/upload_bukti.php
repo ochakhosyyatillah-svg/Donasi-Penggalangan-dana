@@ -1,5 +1,5 @@
 <?php
-require_once 'includes/data.php';
+require_once '../includes/data.php';
 
 // Parameter URL atau default ke program #3 (Bantuan Korban Banjir) persis seperti di desain
 $id      = isset($_GET['id']) ? (int)$_GET['id'] : 3;
@@ -22,7 +22,7 @@ $page_title   = 'Upload Bukti Pembayaran - SIBERASA';
 $page_desc    = 'Unggah bukti pembayaran donasi Anda untuk verifikasi.';
 $current_page = 'program';
 
-require_once 'includes/header.php';
+require_once '../includes/header.php';
 ?>
 
 <!-- Google Fonts Caveat for handwritten text -->
@@ -38,7 +38,7 @@ require_once 'includes/header.php';
 
         <!-- ── TOMBOL KEMBALI ── -->
         <div class="ub-back-row">
-            <a href="/Donasi/donasi.php?id=<?= $prog['id'] ?>" class="ub-btn-back">
+            <a href="donasi.php?id=<?= $prog['id'] ?>" class="ub-btn-back">
                 <i class="fas fa-arrow-left"></i> Kembali ke Detail Donasi
             </a>
         </div>
@@ -287,7 +287,7 @@ require_once 'includes/header.php';
             <button type="button" class="ub-btn-submit" onclick="menujuCekStatusDonasi()" style="width:100%; justify-content:center;">
                 <i class="fas fa-search"></i> Cek Status Donasi
             </button>
-            <button type="button" class="ub-btn-back" onclick="window.location.href='/Donasi/'" style="width:100%; justify-content:center; padding:12px; border:1px solid #d0e2f9; border-radius:50px; background:#f7fbff; color:#1a73e8; font-weight:600; cursor:pointer;">
+            <button type="button" class="ub-btn-back" onclick="window.location.href='index.php'" style="width:100%; justify-content:center; padding:12px; border:1px solid #d0e2f9; border-radius:50px; background:#f7fbff; color:#1a73e8; font-weight:600; cursor:pointer;">
                 Kembali ke Beranda
             </button>
         </div>
@@ -1013,8 +1013,8 @@ function closeModalOnBg(e) {
 
 function menujuCekStatusDonasi() {
     const trx = document.getElementById('modalTrxCode').textContent.trim();
-    window.location.href = '/Donasi/cek_status.php?kode=' + encodeURIComponent(trx);
+    window.location.href = 'cek_status.php?kode=' + encodeURIComponent(trx);
 }
 </script>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php require_once '../includes/footer.php'; ?>
