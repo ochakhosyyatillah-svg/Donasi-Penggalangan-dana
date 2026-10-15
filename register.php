@@ -1,0 +1,393 @@
+<?php
+require_once __DIR__ . '/assets/config/database.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $nama = trim($_POST['name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $no_hp = trim($_POST['phone'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $konfirmasi = $_POST['password_confirm'] ?? '';
+    $pilihan = $_POST['role'] ?? '';
+
+    // Mengubah pilihan tampilan menjadi nilai enum database
+    $jenisOrganisasi = [
+        'ormawa' => 'Ormawa',
+        'unit'   => 'Lembaga/Unit',
+        'ukm'    => 'UKM'
+    ];
+
+    if (
+        $nama === '' ||
+        !filter_var($email, FILTER_VALIDATE_EMAIL) ||
+        $no_hp === '' ||
+        strlen($password) < 8 ||
+        $password !== $konfirmasi ||
+        !isset($jenisOrganisasi[$pilihan])
+    ) {
+        echo "<script>
+            alert('Data tidak valid. Periksa kembali formulir kamu.');
+            history.back();
+        </script>";
+        exit;
+    }
+
+    try {
+        // Periksa apakah email sudah digunakan
+        $cek = $pdo->prepare(
+            "SELECT id_user FROM users WHERE email = ?"
+        );
+        $cek->execute([$email]);
+
+        if ($cek->fetch()) {
+            echo "<script>
+                alert('Email sudah terdaftar. Silakan gunakan email lain.');
+                history.back();
+            </script>";
+            exit;
+        }
+
+        // Hash password sebelum disimpan
+        $hashPassword = password_hash(
+            $password,
+            PASSWORD_DEFAULT
+        );
+
+        $jenis = $jenisOrganisasi[$pilihan];
+
+        // Simpan akun pengusul ke database
+        $sql = "INSERT INTO users (
+                    nama,
+                    email,
+                    password,
+                    no_hp,
+                    jenis_organisasi,
+                    nama_organisasi,
+                    role,
+                    status_verifikasi
+                ) VALUES (?, ?, ?, ?, ?, NULL, 'pengusul', 'menunggu')";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            $nama,
+            $email,
+            $hashPassword,
+            $no_hp,
+            $jenis
+        ]);
+
+        echo "<script>
+            alert('Pendaftaran berhasil! Akun kamu menunggu verifikasi admin.');
+            window.location.href = 'login.php';
+        </script>";
+        exit;
+
+    } catch (PDOException $e) {
+        error_log($e->getMessage());
+
+        echo "<script>
+            alert('Pendaftaran gagal. Silakan coba kembali.');
+            history.back();
+        </script>";
+        exit;
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registrasi – SIBERASA</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+/* ── RESET ───────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Poppins',sans-serif;
+  min-height:100vh;
+  background:#e8e8e8;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+
+/* ── WRAPPER ─────────────────── */
+.register-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  width:100%;
+  max-width:500px;
+}
+
+/* ── CARD ────────────────────── */
+.card{
+  width:100%;
+  background:#fff;
+  border-radius:16px;
+  padding:36px 40px 32px;
+  box-shadow:0 4px 32px rgba(0,0,0,.08);
+}
+
+.card-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1a202c;
+  margin-bottom: 24px;
+}
+
+/* ── ROLE SELECTION ──────────── */
+.role-selection {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.role-card {
+  flex: 1;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.role-card:hover {
+  border-color: #1a73e8;
+  background: #f8fafc;
+}
+
+.role-card.active {
+  border-color: #1a73e8;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px #1a73e8;
+}
+
+.role-icon {
+  font-size: 1.5rem;
+  color: #1a202c;
+  margin-bottom: 8px;
+}
+
+.role-text {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #4a5568;
+  text-align: center;
+}
+
+/* ── ALERT INFO ──────────────── */
+.alert-info {
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.alert-info i {
+  color: #2563eb;
+  font-size: 1.2rem;
+  margin-top: 2px;
+}
+
+.alert-info p {
+  font-size: 0.8rem;
+  color: #1e3a8a;
+  line-height: 1.4;
+}
+
+/* ── FORM GROUP ──────────────── */
+.form-group{
+  margin-bottom: 18px;
+}
+.form-group label{
+  display:block;
+  font-size:.85rem;
+  font-weight:600;
+  color:#333;
+  margin-bottom:8px;
+}
+.form-group label span.req {
+  color: #dc2626;
+}
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="text"],
+.form-group input[type="tel"]{
+  width:100%;
+  padding:14px 16px;
+  border:1.5px solid #d1d5db;
+  border-radius:8px;
+  font-family:'Poppins',sans-serif;
+  font-size:.88rem;
+  color:#1a202c;
+  background:#fff;
+  outline:none;
+  transition:border-color .2s, box-shadow .2s;
+}
+.form-group input:focus{
+  border-color:#1a73e8;
+  box-shadow:0 0 0 3px rgba(26,115,232,.12);
+}
+.form-group input::placeholder{color:#a0aec0}
+
+/* ── BTN SUBMIT ──────────────── */
+.btn-submit{
+  display:block;
+  width:100%;
+  padding:14px;
+  background:#1a73e8;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  font-family:'Poppins',sans-serif;
+  font-size:1rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:background .25s, transform .2s, box-shadow .25s;
+  box-shadow:0 4px 14px rgba(26,115,232,.35);
+  margin-top: 24px;
+}
+.btn-submit:hover{
+  background:#1557b0;
+  transform:translateY(-1px);
+  box-shadow:0 6px 20px rgba(26,115,232,.45);
+}
+.btn-submit:active{transform:translateY(0)}
+
+/* ── FOOTER TEXT ─────────────── */
+.foot-text{
+  text-align:center;
+  margin-top:20px;
+  font-size:.85rem;
+  color:#4a5568;
+  font-weight: 500;
+}
+.foot-text a{
+  color:#3b82f6;
+  font-weight:600;
+  text-decoration:none;
+}
+.foot-text a:hover{text-decoration:underline}
+
+/* ── RESPONSIVE ──────────────── */
+@media(max-width:480px){
+  .card{padding:28px 20px 24px}
+  .role-selection { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<div class="register-wrap">
+  <div class="card">
+    <h1 class="card-title">Registrasi</h1>
+
+    <form method="POST" action="register.php" id="registerForm">
+      
+      <!-- Role Selection -->
+      <div class="role-selection">
+        <label class="role-card active" onclick="selectRole(this, 'ormawa')">
+          <input type="radio" name="role" value="ormawa" checked style="display:none;">
+          <i class="fas fa-users role-icon"></i>
+          <span class="role-text">ORMAWA</span>
+        </label>
+        <label class="role-card" onclick="selectRole(this, 'unit')">
+          <input type="radio" name="role" value="unit" style="display:none;">
+          <i class="far fa-building role-icon"></i>
+          <span class="role-text">Unit/lembaga</span>
+        </label>
+        <label class="role-card" onclick="selectRole(this, 'ukm')">
+          <input type="radio" name="role" value="ukm" style="display:none;">
+          <i class="far fa-star role-icon"></i>
+          <span class="role-text">UKM</span>
+        </label>
+      </div>
+
+      <!-- Info Alert -->
+      <div class="alert-info">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>sebagai pengusul donasi, Anda dapat mengajukan program donasi dan mengelola kegiatan penggalangan dana</p>
+      </div>
+
+      <!-- Nama Lengkap -->
+      <div class="form-group">
+        <label for="name">Nama Lengkap <span class="req">*</span></label>
+        <input type="text" id="name" name="name" placeholder="Masukkan Nama Lengkap" required>
+      </div>
+
+      <!-- Email -->
+      <div class="form-group">
+        <label for="email">Email <span class="req">*</span></label>
+        <input type="email" id="email" name="email" placeholder="Masukkan Email Anda" required>
+      </div>
+
+      <!-- Nomer Telepon -->
+      <div class="form-group">
+        <label for="phone">Nomer Telepon <span class="req">*</span></label>
+        <input type="tel" id="phone" name="phone" placeholder="Contoh: 085xxxx" required>
+      </div>
+
+      <!-- Password -->
+      <div class="form-group">
+        <label for="password">Password <span class="req">*</span></label>
+        <input type="password" id="password" name="password" placeholder="Minimal 8 Karakter" required minlength="8">
+      </div>
+
+      <!-- Konfirmasi Password -->
+      <div class="form-group">
+        <label for="password_confirm">Konfirmasi Password <span class="req">*</span></label>
+        <input type="password" id="password_confirm" name="password_confirm" placeholder="Ulangi Password" required minlength="8">
+      </div>
+
+      <!-- Tombol Submit -->
+      <button type="submit" class="btn-submit" id="btnSubmit">Daftar Sekarang</button>
+    </form>
+
+    <!-- Sudah punya akun -->
+    <p class="foot-text">
+      Sudah punya akun? <a href="login.php">Login disini</a>
+    </p>
+
+  </div>
+</div>
+
+<script>
+function selectRole(element, role) {
+  // Remove active class from all
+  document.querySelectorAll('.role-card').forEach(card => {
+    card.classList.remove('active');
+  });
+  // Add active class to clicked
+  element.classList.add('active');
+  // Check the radio input
+  element.querySelector('input').checked = true;
+}
+
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+  const pw = document.getElementById('password').value;
+  const pwConf = document.getElementById('password_confirm').value;
+
+  if (pw !== pwConf) {
+    e.preventDefault();
+    alert('Password dan Konfirmasi Password tidak cocok!');
+  }
+});
+</script>
+
+</body>
+</html>
