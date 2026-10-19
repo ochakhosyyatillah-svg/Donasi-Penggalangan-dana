@@ -366,8 +366,8 @@ img{display:block;max-width:100%}
 
     <!-- Actions -->
     <div class="nav-actions">
-      <button class="btn btn-primary" onclick="window.location.href='login.php'">Masuk</button>
-      <button class="btn btn-outline" onclick="window.location.href='register.php'">Daftar</button>
+      <button class="btn btn-primary" onclick="window.location.href='/Donasi/auth/login.php'">Masuk</button>
+      <button class="btn btn-outline" onclick="window.location.href='/Donasi/auth/register.php'">Daftar</button>
     </div>
   </div>
 </nav>

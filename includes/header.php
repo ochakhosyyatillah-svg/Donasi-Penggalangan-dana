@@ -49,8 +49,8 @@ $page_desc = $page_desc ?? 'SIBERASA adalah platform donasi online terpercaya. B
 
 
         <div class="nav-actions">
-            <button class="btn btn-primary" id="btnMasuk" onclick="window.location.href='/Donasi/donatur/login.php'">Masuk</button>
-            <button class="btn btn-outline" id="btnDaftar" onclick="window.location.href='/Donasi/donatur/register.php'">Daftar</button>
+            <button class="btn btn-primary" id="btnMasuk" onclick="window.location.href='/Donasi/auth/login.php'">Masuk</button>
+            <button class="btn btn-outline" id="btnDaftar" onclick="window.location.href='/Donasi/auth/register.php'">Daftar</button>
         </div>
 
         <button class="hamburger" id="hamburger" aria-label="Menu" onclick="toggleMobileMenu()">

@@ -4,7 +4,7 @@ require_once __DIR__ . '/../assets/config/database.php';
 
 // Pastikan pengguna sudah login sebagai admin
 if (!isset($_SESSION['id_user']) || $_SESSION['role'] !== 'admin') {
-    header('Location: /Donasi/donatur/login.php');
+    header('Location: /Donasi/auth/login.php');
     exit;
 }
 
@@ -690,7 +690,7 @@ ul{list-style:none}
         </a>
       </li>
       <li class="nav-item">
-        <a href="#" class="nav-link" id="nav-verifikasi">
+        <a href="verifikasi_donasi.php" class="nav-link" id="nav-verifikasi">
           <i class="fas fa-clipboard-check"></i>
           <span>Verifikasi Donasi</span>
         </a>
@@ -699,7 +699,7 @@ ul{list-style:none}
   </nav>
 
   <div class="sidebar-footer">
-    <a href="../Backend/Auth/logout.php" class="nav-link" id="nav-logout">
+    <a href="logout.php" class="nav-link" id="nav-logout">
       <i class="fas fa-sign-out-alt"></i>
       <span>Logout</span>
     </a>

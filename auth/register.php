@@ -110,15 +110,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 body{
   font-family:'Poppins',sans-serif;
   min-height:100vh;
-  background:#e8e8e8;
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:24px;
+  padding:30px 16px;
+  position:relative;
+  background-color:#0f172a;
+  background-image:url('/Donasi/assets/img/bg_login.jpg');
+  background-size:cover;
+  background-position:center;
+  background-repeat:no-repeat;
+  background-attachment:fixed;
+}
+
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background:linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.58) 0%,
+    rgba(26, 54, 93, 0.50) 50%,
+    rgba(13, 79, 92, 0.55) 100%
+  );
+  backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);
+  z-index:0;
 }
 
 /* ── WRAPPER ─────────────────── */
 .register-wrap{
+  position:relative;
+  z-index:1;
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -126,18 +149,45 @@ body{
   max-width:500px;
 }
 
+.back-home{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  align-self:flex-start;
+  color:rgba(255,255,255,0.92);
+  text-decoration:none;
+  font-size:0.8rem;
+  font-weight:500;
+  margin-bottom:12px;
+  padding:7px 14px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.15);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,0.25);
+  transition:all 0.25s ease;
+}
+
+.back-home:hover{
+  background:rgba(255,255,255,0.28);
+  color:#fff;
+  transform:translateX(-3px);
+}
+
 /* ── CARD ────────────────────── */
 .card{
   width:100%;
-  background:#fff;
-  border-radius:16px;
-  padding:36px 40px 32px;
-  box-shadow:0 4px 32px rgba(0,0,0,.08);
+  background:rgba(255,255,255,0.98);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  border-radius:20px;
+  padding:32px 36px 28px;
+  box-shadow:0 20px 45px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.7);
 }
 
 .card-title {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.45rem;
+  font-weight: 700;
   color: #1a202c;
   margin-bottom: 24px;
 }
@@ -294,6 +344,11 @@ body{
 <body>
 
 <div class="register-wrap">
+  <!-- Link Kembali ke Beranda -->
+  <a href="/Donasi/donatur/index.php" class="back-home">
+    <i class="fas fa-arrow-left"></i> Kembali ke Beranda
+  </a>
+
   <div class="card">
     <h1 class="card-title">Registrasi</h1>
 
@@ -360,7 +415,7 @@ body{
 
     <!-- Sudah punya akun -->
     <p class="foot-text">
-      Sudah punya akun? <a href="/Donasi/donatur/login.php">Login disini</a>
+      Sudah punya akun? <a href="/Donasi/auth/login.php">Login disini</a>
     </p>
 
   </div>
