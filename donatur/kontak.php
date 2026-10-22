@@ -212,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="container">
         <div class="footer-grid">
             <div class="footer-brand">
-                <a href="/Donasi/" class="nav-logo"><img src="/logo.donasi.png" alt="SIBERASA" style="filter:brightness(0)invert(1);"></a>
+                <a href="/Donasi/" class="nav-logo"><img src="/logo%20donasi.png" alt="SIBERASA" style="filter:brightness(0)invert(1);"></a>
                 <p>Platform donasi online terpercaya di Indonesia.</p>
                 <div class="footer-socials">
                     <a href="#" class="social-btn"><i class="fab fa-instagram"></i></a>

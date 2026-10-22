@@ -323,9 +323,13 @@ ul{list-style:none}
 /* ── Main Content ─────────────────────────────────────────────── */
 .main-content{
   flex:1;
+  min-width:0;
+  width:calc(100% - 260px);
+  max-width:calc(100% - 260px);
   margin-left:260px;
   min-height:100vh;
-  display:flex;flex-direction:column;
+  display:flex;
+  flex-direction:column;
 }
 
 /* Topbar */
@@ -350,7 +354,7 @@ ul{list-style:none}
 .notif-btn:hover{background:#e2e8f0;transform:translateY(-1px)}
 
 /* Page content */
-.page-content{flex:1;padding:28px 32px 40px}
+.page-content{flex:1;min-width:0;padding:28px 32px 40px}
 .page-title{margin-bottom:20px}
 .page-title h1{font-size:1.6rem;font-weight:700;color:#0f172a}
 .page-title p{font-size:.88rem;color:#64748b;margin-top:2px}
@@ -411,13 +415,23 @@ ul{list-style:none}
   border:2px solid #3282b8;
   overflow:hidden;
   animation:fadeInUp .5s ease both;
+  width:100%;
+  max-width:100%;
 }
 @keyframes fadeInUp{
   from{opacity:0;transform:translateY(20px)}
   to{opacity:1;transform:translateY(0)}
 }
-.table-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse}
+.table-wrap{
+  width:100%;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:760px;
+}
 thead tr{
   background:linear-gradient(90deg,#f0f7ff,#e8f2fb);
   border-bottom:2px solid #d0e8f8;
@@ -619,17 +633,19 @@ textarea.form-control{resize:vertical;min-height:90px}
 @media(max-width:768px){
   .sidebar{transform:translateX(-100%)}
   .sidebar.open{transform:translateX(0)}
-  .main-content{margin-left:0}
+  .main-content{margin-left:0;width:100%;max-width:100%}
   .mobile-toggle{display:block}
   .topbar{padding:12px 16px}
   .page-content{padding:20px 16px 32px}
   .form-row{grid-template-columns:1fr}
   .modal{padding:24px 18px;margin:16px}
 }
-@media(max-width:480px){
-  .toolbar{flex-direction:column;align-items:stretch}
-  .search-box{max-width:100%}
-  .btn-tambah{justify-content:center}
+@media(max-width:576px){
+  .toolbar-wrap{flex-direction:column;align-items:stretch}
+  .toolbar-wrap form{flex-direction:column;align-items:stretch;width:100%}
+  .search-box{max-width:100%!important;width:100%}
+  .filter-select{width:100%}
+  .btn-tambah{justify-content:center;width:100%}
 }
 </style>
 </head>
@@ -734,9 +750,9 @@ textarea.form-control{resize:vertical;min-height:90px}
     <?php endif; ?>
 
     <!-- Toolbar -->
-    <form method="GET" id="filterForm">
-      <div class="toolbar">
-        <div class="search-box">
+    <div class="toolbar-wrap" style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
+      <form method="GET" id="filterForm" style="display:flex;align-items:center;gap:12px;flex:1;flex-wrap:wrap;">
+        <div class="search-box" style="flex:1;min-width:200px;max-width:380px;">
           <i class="fas fa-search"></i>
           <input type="text" name="q" id="searchInput"
                  placeholder="Cari Program...."
@@ -750,11 +766,8 @@ textarea.form-control{resize:vertical;min-height:90px}
           <?php endforeach; ?>
         </select>
         <button type="submit" style="display:none"></button>
-      </div>
-    </form>
+      </form>
 
-    <!-- Tambah Button (outside form) -->
-    <div style="display:flex;justify-content:flex-end;margin-top:-52px;margin-bottom:20px">
       <button class="btn-tambah" id="btnTambah">
         <i class="fas fa-plus"></i> Tambah Program
       </button>
@@ -788,15 +801,15 @@ textarea.form-control{resize:vertical;min-height:90px}
             <tr>
               <td class="col-no"><?= $offset + $i + 1 ?></td>
               <td class="col-judul">
-                <?= htmlspecialchars($prog['judul']) ?>
-                <?php if ($prog['nama_pengusul']): ?>
+                <?= htmlspecialchars($prog['judul'] ?? '') ?>
+                <?php if (!empty($prog['nama_pengusul'])): ?>
                 <small><i class="fas fa-user" style="font-size:.6rem"></i> <?= htmlspecialchars($prog['nama_pengusul']) ?></small>
                 <?php endif; ?>
               </td>
-              <td><?= htmlspecialchars($prog['kategori']) ?></td>
-              <td><?= $prog['tanggal_mulai'] ? date('d M Y', strtotime($prog['tanggal_mulai'])) : '-' ?></td>
-              <td><?= rpK($prog['target_dana']) ?></td>
-              <td><?= statusBadge($prog['status_program']) ?></td>
+              <td><?= htmlspecialchars($prog['kategori'] ?? '-') ?></td>
+              <td><?= !empty($prog['tanggal_mulai']) ? date('d M Y', strtotime($prog['tanggal_mulai'])) : '-' ?></td>
+              <td><?= rpK($prog['target_dana'] ?? 0) ?></td>
+              <td><?= statusBadge($prog['status_program'] ?? '') ?></td>
               <td class="col-aksi">
                 <!-- Edit -->
                 <button class="btn-action btn-edit"
@@ -807,7 +820,7 @@ textarea.form-control{resize:vertical;min-height:90px}
                 <!-- Hapus -->
                 <button class="btn-action btn-hapus"
                   title="Hapus"
-                  onclick="openDeleteModal(<?= $prog['id_program'] ?>, '<?= htmlspecialchars(addslashes($prog['judul'])) ?>')">
+                  onclick="openDeleteModal(<?= (int)$prog['id_program'] ?>, '<?= htmlspecialchars(addslashes($prog['judul'] ?? '')) ?>')">
                   <i class="fas fa-trash"></i>
                 </button>
               </td>
@@ -870,13 +883,12 @@ textarea.form-control{resize:vertical;min-height:90px}
           <label>Kategori <span>*</span></label>
           <select name="kategori" class="form-control" required>
             <option value="">-- Pilih Kategori --</option>
+            <option>Sosial</option>
             <option>Pendidikan</option>
+            <option>Kemanusiaan</option>
             <option>Kesehatan</option>
             <option>Keagamaan</option>
-            <option>Sosial</option>
-            <option>Bencana Alam</option>
             <option>Lingkungan</option>
-            <option>Lainnya</option>
           </select>
         </div>
         <div class="form-group">
@@ -943,13 +955,12 @@ textarea.form-control{resize:vertical;min-height:90px}
           <label>Kategori <span>*</span></label>
           <select name="kategori" id="edit_kategori" class="form-control" required>
             <option value="">-- Pilih Kategori --</option>
+            <option>Sosial</option>
             <option>Pendidikan</option>
+            <option>Kemanusiaan</option>
             <option>Kesehatan</option>
             <option>Keagamaan</option>
-            <option>Sosial</option>
-            <option>Bencana Alam</option>
             <option>Lingkungan</option>
-            <option>Lainnya</option>
           </select>
         </div>
         <div class="form-group">

@@ -26,7 +26,7 @@ $page_desc = $page_desc ?? 'SIBERASA adalah platform donasi online terpercaya. B
     <link rel="stylesheet" href="/Donasi/assets/css/style.css?v=<?= time() ?>">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/logo.donasi.png">
+    <link rel="icon" type="image/png" href="/logo%20donasi.png">
 </head>
 <body>
 
@@ -34,8 +34,7 @@ $page_desc = $page_desc ?? 'SIBERASA adalah platform donasi online terpercaya. B
 <nav class="navbar" id="navbar">
     <div class="nav-container">
         <a href="/Donasi/" class="nav-logo">
-            <img src="/logo%20donasi.png" alt="SIBERASA Logo">
-
+            <img src="/logo%20donasi.png" alt="SIBERASA Logo" onerror="this.src='/Donasi/assets/img/logo_donasi.png'">
         </a>
 
         <ul class="nav-links" id="navLinks">

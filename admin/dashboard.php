@@ -17,11 +17,11 @@ try {
     $totalProgram = $stmtProgram->fetch()['total'] ?? 0;
 
     // Total Donatur (unik)
-    $stmtDonatur = $pdo->query("SELECT COUNT(DISTINCT id_user) AS total FROM donasi");
+    $stmtDonatur = $pdo->query("SELECT COUNT(DISTINCT email_donatur) AS total FROM donasi");
     $totalDonatur = $stmtDonatur->fetch()['total'] ?? 0;
 
     // Total Dana Terkumpul
-    $stmtDana = $pdo->query("SELECT COALESCE(SUM(jumlah), 0) AS total FROM donasi WHERE status = 'diterima'");
+    $stmtDana = $pdo->query("SELECT COALESCE(SUM(nominal), 0) AS total FROM donasi WHERE status_donasi = 'berhasil'");
     $totalDana = $stmtDana->fetch()['total'] ?? 0;
 
     // Menunggu Verifikasi
@@ -30,10 +30,10 @@ try {
 
     // Donasi Terbaru (5 terakhir)
     $stmtRecent = $pdo->query("
-        SELECT d.*, p.judul AS nama_program
+        SELECT d.id_donasi, d.nominal AS jumlah, d.status_donasi AS status, d.tanggal_donasi AS created_at, p.judul AS nama_program
         FROM donasi d
         LEFT JOIN program_donasi p ON d.id_program = p.id_program
-        ORDER BY d.created_at DESC
+        ORDER BY d.tanggal_donasi DESC
         LIMIT 5
     ");
     $donasiTerbaru = $stmtRecent->fetchAll();
@@ -41,12 +41,12 @@ try {
     // Data Chart - 6 bulan terakhir
     $stmtChart = $pdo->query("
         SELECT 
-            DATE_FORMAT(created_at, '%Y-%m') AS bulan,
-            SUM(jumlah) AS total
+            DATE_FORMAT(tanggal_donasi, '%Y-%m') AS bulan,
+            SUM(nominal) AS total
         FROM donasi
-        WHERE status = 'diterima'
-          AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-        GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+        WHERE status_donasi = 'berhasil'
+          AND tanggal_donasi >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+        GROUP BY DATE_FORMAT(tanggal_donasi, '%Y-%m')
         ORDER BY bulan ASC
     ");
     $chartData = $stmtChart->fetchAll();

@@ -35,9 +35,9 @@ require_once '../includes/header.php';
                 </p>
 
                 <div class="gd-actions">
-                    <button type="button" class="btn-ajukan-hero" onclick="bukaModalPengajuan()">
+                    <a href="/Donasi/auth/register.php" class="btn-ajukan-hero">
                         <i class="fas fa-plus-circle"></i> Ajukan Program
-                    </button>
+                    </a>
                     <a href="#mengapaSection" class="link-pelajari">
                         Pelajari lebih lanjut &nbsp;&rarr;
                     </a>
@@ -116,136 +116,13 @@ require_once '../includes/header.php';
                         Ingin menggalang dana untuk kegiatan organisasi, UKM, unit, lembaga, atau program lainnya?
                     </p>
 
-                    <button type="button" class="btn-ajukan-card" onclick="bukaModalPengajuan()">
-                        Ajukan Program &nbsp;&rarr;
-                    </button>
+                    <a href="/Donasi/auth/register.php" class="btn-ajukan-card">
+                        Buat Akun &amp; Ajukan &nbsp;&rarr;
+                    </a>
                 </div>
             </div>
         </section>
 
-
-        <!-- ── BOTTOM STATUS BANNER ── -->
-        <section class="gd-bottom-banner">
-            <div class="gd-banner-left">
-                <div class="gd-banner-icon">
-                    <i class="fas fa-info"></i>
-                </div>
-                <div class="gd-banner-text">
-                    <h4>Sudah punya program yang berjalan?</h4>
-                    <p>Pantau status penggalangan dana Anda, mulai dari proses verifikasi hingga penyaluran dana.</p>
-                </div>
-            </div>
-            <a href="#" class="gd-banner-link" onclick="bukaModalStatus(event)">
-                Lihat Status &nbsp;&rarr;
-            </a>
-        </section>
-
-    </div>
-</div>
-
-
-<!-- ═══════════════════════════════════════════════════════════════════
-     MODAL PENGAJUAN PROGRAM
-════════════════════════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="modalPengajuan" style="display:none;" onclick="tutupModalPengajuanOnBg(event)">
-    <div class="gd-modal-box" onclick="event.stopPropagation()">
-        <button type="button" class="gd-modal-close" onclick="tutupModalPengajuan()" aria-label="Tutup">
-            <i class="fas fa-times"></i>
-        </button>
-
-        <div class="gd-modal-header">
-            <div class="gd-modal-icon-wrap">
-                <i class="fas fa-bullhorn"></i>
-            </div>
-            <h3>Formulir Pengajuan Galang Dana</h3>
-            <p>Lengkapi formulir di bawah ini untuk mengajukan inisiatif program baru di SIBERASA.</p>
-        </div>
-
-        <form id="formPengajuanProgram" onsubmit="submitPengajuan(event)">
-            <div class="gd-form-group">
-                <label class="gd-label">Nama Organisasi / Komunitas / Pemohon <span class="req">*</span></label>
-                <input type="text" id="progOrg" class="gd-input" placeholder="Contoh: Himpunan Mahasiswa Informatika / UKM Peduli Sesama" required>
-            </div>
-
-            <div class="gd-form-group">
-                <label class="gd-label">Judul Program Penggalangan Dana <span class="req">*</span></label>
-                <input type="text" id="progJudul" class="gd-input" placeholder="Contoh: Bantuan Pengadaan Buku & Sarana Belajar Pelosok" required>
-            </div>
-
-            <div class="gd-form-row">
-                <div class="gd-form-group">
-                    <label class="gd-label">Kategori <span class="req">*</span></label>
-                    <select id="progKat" class="gd-select" required>
-                        <option value="Pendidikan">Pendidikan</option>
-                        <option value="Sosial">Sosial</option>
-                        <option value="Kemanusiaan">Kemanusiaan / Bencana</option>
-                        <option value="Kesehatan">Kesehatan</option>
-                        <option value="Keagamaan">Keagamaan</option>
-                        <option value="Lingkungan">Lingkungan</option>
-                    </select>
-                </div>
-                <div class="gd-form-group">
-                    <label class="gd-label">Target Donasi (Rp) <span class="req">*</span></label>
-                    <input type="number" id="progTarget" class="gd-input" placeholder="50000000" min="500000" step="50000" required>
-                </div>
-            </div>
-
-            <div class="gd-form-group">
-                <label class="gd-label">Nomor WhatsApp Aktif <span class="req">*</span></label>
-                <input type="tel" id="progWa" class="gd-input" placeholder="08xxxxxxxxxx (untuk konfirmasi verifikasi)" required>
-            </div>
-
-            <div class="gd-form-group">
-                <label class="gd-label">Ringkasan Tujuan &amp; Urgensi Program <span class="req">*</span></label>
-                <textarea id="progDesc" class="gd-textarea" rows="3" placeholder="Jelaskan secara singkat latar belakang dan tujuan penggalangan dana..." required></textarea>
-            </div>
-
-            <div class="gd-modal-actions">
-                <button type="button" class="btn-cancel" onclick="tutupModalPengajuan()">Batal</button>
-                <button type="submit" class="btn-submit">Kirim Pengajuan</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-
-<!-- ═══════════════════════════════════════════════════════════════════
-     MODAL LIHAT STATUS
-════════════════════════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="modalStatus" style="display:none;" onclick="tutupModalStatusOnBg(event)">
-    <div class="gd-modal-box" onclick="event.stopPropagation()">
-        <button type="button" class="gd-modal-close" onclick="tutupModalStatus()" aria-label="Tutup">
-            <i class="fas fa-times"></i>
-        </button>
-
-        <div class="gd-modal-header">
-            <div class="gd-modal-icon-wrap" style="background:#eef5fc; color:#1a73e8;">
-                <i class="fas fa-search"></i>
-            </div>
-            <h3>Cek Status Pengajuan Program</h3>
-            <p>Masukkan kode pengajuan atau nomor WhatsApp yang Anda daftarkan saat mengajukan program.</p>
-        </div>
-
-        <form id="formCekStatus" onsubmit="submitCekStatus(event)">
-            <div class="gd-form-group">
-                <label class="gd-label">Kode Pengajuan / Nomor WhatsApp</label>
-                <input type="text" id="inputKodeStatus" class="gd-input" placeholder="Contoh: GD-2026-0812 atau 08123456789" required>
-            </div>
-
-            <div id="statusResultBox" style="display:none; background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; padding:14px; margin-bottom:16px; font-size:0.86rem; color:#0369a1;">
-                <strong><i class="fas fa-check-circle" style="color:#0284c7;"></i> Status Pengajuan Ditemukan:</strong><br>
-                <div style="margin-top:6px; color:#334155;">
-                    Kode: <span id="resKode" style="font-weight:700; color:#0284c7;"></span><br>
-                    Status: <span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:4px; font-weight:600;">Dalam Tahap Verifikasi</span><br>
-                    <small style="color:#64748b; margin-top:4px; display:block;">Tim kami sedang meninjau kelengkapan dokumen pengajuan Anda (estimasi 1x24 jam).</small>
-                </div>
-            </div>
-
-            <div class="gd-modal-actions">
-                <button type="button" class="btn-cancel" onclick="tutupModalStatus()">Tutup</button>
-                <button type="submit" class="btn-submit">Cek Status</button>
-            </div>
-        </form>
     </div>
 </div>
 
@@ -413,7 +290,7 @@ require_once '../includes/header.php';
 .gd-bottom-section {
     display: flex;
     gap: 40px;
-    margin-bottom: 55px;
+    margin-bottom: 80px;
     align-items: stretch;
 }
 
@@ -532,229 +409,27 @@ require_once '../includes/header.php';
 .btn-ajukan-card {
     width: 100%;
     background-color: #1a73e8;
-    color: #ffffff;
+    color: #ffffff !important;
     border: none;
     border-radius: 10px;
     padding: 13px 18px;
     font-size: 0.92rem;
     font-weight: 600;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     justify-content: center;
     align-items: center;
+    text-decoration: none !important;
     transition: background-color 0.25s, transform 0.2s;
     box-shadow: 0 4px 12px rgba(26,115,232,0.22);
 }
 
 .btn-ajukan-card:hover {
     background-color: #1557b0;
+    color: #ffffff !important;
     transform: translateY(-1px);
 }
 
-
-/* ── 3. BOTTOM BANNER ── */
-.gd-bottom-banner {
-    background-color: #edf5fd;
-    border-radius: 14px;
-    padding: 20px 28px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border: 1px solid rgba(26,115,232,0.08);
-}
-
-.gd-banner-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.gd-banner-icon {
-    width: 34px;
-    height: 34px;
-    background-color: #1a73e8;
-    color: #ffffff;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 0.95rem;
-    flex-shrink: 0;
-}
-
-.gd-banner-text h4 {
-    font-size: 0.98rem;
-    font-weight: 700;
-    color: #1a73e8;
-    margin-bottom: 3px;
-}
-
-.gd-banner-text p {
-    font-size: 0.83rem;
-    color: #4a5568;
-    margin: 0;
-    line-height: 1.45;
-}
-
-.gd-banner-link {
-    color: #1a73e8;
-    font-weight: 600;
-    font-size: 0.92rem;
-    display: inline-flex;
-    align-items: center;
-    text-decoration: none;
-    white-space: nowrap;
-    padding: 6px 12px;
-    border-radius: 6px;
-    transition: background 0.2s, transform 0.2s;
-}
-
-.gd-banner-link:hover {
-    background-color: rgba(26,115,232,0.08);
-    transform: translateX(2px);
-}
-
-
-/* ── MODALS STYLING ── */
-.gd-modal-box {
-    background: #ffffff;
-    border-radius: 18px;
-    max-width: 560px;
-    width: 92%;
-    padding: 32px 28px;
-    position: relative;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.18);
-    animation: gdModalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@keyframes gdModalPop {
-    from { opacity: 0; transform: scale(0.92); }
-    to { opacity: 1; transform: scale(1); }
-}
-
-.gd-modal-close {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    background: transparent;
-    border: none;
-    font-size: 1.2rem;
-    color: #94a3b8;
-    cursor: pointer;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s, color 0.2s;
-}
-.gd-modal-close:hover {
-    background: #f1f5f9;
-    color: #1e293b;
-}
-
-.gd-modal-header {
-    text-align: center;
-    margin-bottom: 24px;
-}
-.gd-modal-icon-wrap {
-    width: 54px;
-    height: 54px;
-    border-radius: 50%;
-    background: #eef5ff;
-    color: #1a73e8;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.4rem;
-    margin-bottom: 12px;
-}
-.gd-modal-header h3 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #15325e;
-    margin-bottom: 6px;
-}
-.gd-modal-header p {
-    font-size: 0.83rem;
-    color: #64748b;
-    margin: 0;
-    line-height: 1.5;
-}
-
-.gd-form-group {
-    margin-bottom: 16px;
-}
-.gd-form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-}
-.gd-label {
-    display: block;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: #334155;
-    margin-bottom: 6px;
-}
-.gd-label .req {
-    color: #ef4444;
-}
-
-.gd-input, .gd-select, .gd-textarea {
-    width: 100%;
-    padding: 10px 14px;
-    border-radius: 8px;
-    border: 1.5px solid #cbd5e1;
-    font-family: inherit;
-    font-size: 0.88rem;
-    color: #1e293b;
-    background: #f8fafc;
-    transition: all 0.2s;
-    outline: none;
-}
-.gd-input:focus, .gd-select:focus, .gd-textarea:focus {
-    border-color: #1a73e8;
-    background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(26,115,232,0.12);
-}
-
-.gd-modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 24px;
-    padding-top: 16px;
-    border-top: 1px solid #f1f5f9;
-}
-.btn-cancel {
-    background: #f1f5f9;
-    color: #475569;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.88rem;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-.btn-cancel:hover {
-    background: #e2e8f0;
-}
-.btn-submit {
-    background: #1a73e8;
-    color: #ffffff;
-    border: none;
-    padding: 10px 22px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.88rem;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-.btn-submit:hover {
-    background: #1557b0;
-}
 
 
 /* ── RESPONSIVE MEDIA QUERIES ── */
@@ -823,62 +498,6 @@ require_once '../includes/header.php';
 </style>
 
 
-<!-- ═══════════════════════════════════════════════════════════════════
-     JAVASCRIPT INTERAKTIF
-════════════════════════════════════════════════════════════════════ -->
-<script>
-// Modal Pengajuan Handler
-function bukaModalPengajuan() {
-    document.getElementById('modalPengajuan').style.display = 'flex';
-}
-function tutupModalPengajuan() {
-    document.getElementById('modalPengajuan').style.display = 'none';
-}
-function tutupModalPengajuanOnBg(e) {
-    if (e.target.id === 'modalPengajuan') {
-        tutupModalPengajuan();
-    }
-}
 
-function submitPengajuan(e) {
-    e.preventDefault();
-    const judul = document.getElementById('progJudul').value;
-    const kode = 'GD-' + Math.floor(1000 + Math.random() * 9000);
-    
-    tutupModalPengajuan();
-    document.getElementById('formPengajuanProgram').reset();
-
-    // Show nice alert/toast
-    if (typeof showToast === 'function') {
-        showToast('Pengajuan program "' + judul + '" berhasil dikirim! Kode Tiket: ' + kode, 'success');
-    } else {
-        alert('Pengajuan program berhasil dikirim!\n\nKode Tiket Anda: ' + kode + '\nTim kami akan menghubungi Anda via WhatsApp dalam 1x24 jam.');
-    }
-}
-
-// Modal Cek Status Handler
-function bukaModalStatus(e) {
-    if (e) e.preventDefault();
-    document.getElementById('statusResultBox').style.display = 'none';
-    document.getElementById('modalStatus').style.display = 'flex';
-}
-function tutupModalStatus() {
-    document.getElementById('modalStatus').style.display = 'none';
-}
-function tutupModalStatusOnBg(e) {
-    if (e.target.id === 'modalStatus') {
-        tutupModalStatus();
-    }
-}
-
-function submitCekStatus(e) {
-    e.preventDefault();
-    const kode = document.getElementById('inputKodeStatus').value.trim();
-    if (!kode) return;
-
-    document.getElementById('resKode').textContent = kode;
-    document.getElementById('statusResultBox').style.display = 'block';
-}
-</script>
 
 <?php require_once '../includes/footer.php'; ?>

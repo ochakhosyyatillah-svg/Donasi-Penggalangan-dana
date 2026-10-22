@@ -80,8 +80,16 @@ ul { list-style: none; }
 }
 
 .nav-logo img {
-  height: 42px;
+  height: 52px;
   width: auto;
+  max-width: 200px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.12)) brightness(1.02);
+  transition: transform 0.2s ease;
+}
+
+.nav-logo img:hover {
+  transform: scale(1.04);
 }
 
 .nav-logo span {

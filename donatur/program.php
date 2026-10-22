@@ -32,11 +32,12 @@ require_once '../includes/header.php';
             <div class="prog-select-wrap">
                 <select id="progCategory" class="prog-select" onchange="filterCards()">
                     <option value="">Semua Kategori</option>
-                    <option value="pendidikan">Pendidikan</option>
                     <option value="sosial">Sosial</option>
+                    <option value="pendidikan">Pendidikan</option>
                     <option value="kemanusiaan">Kemanusiaan</option>
                     <option value="kesehatan">Kesehatan</option>
                     <option value="keagamaan">Keagamaan</option>
+                    <option value="lingkungan">Lingkungan</option>
                 </select>
                 <i class="fas fa-chevron-down prog-select-icon"></i>
             </div>
@@ -50,6 +51,7 @@ require_once '../includes/header.php';
             <button class="prog-tab" data-filter="kemanusiaan" onclick="setTab(this, 'kemanusiaan')">Kemanusiaan</button>
             <button class="prog-tab" data-filter="kesehatan" onclick="setTab(this, 'kesehatan')">Kesehatan</button>
             <button class="prog-tab" data-filter="keagamaan" onclick="setTab(this, 'keagamaan')">Keagamaan</button>
+            <button class="prog-tab" data-filter="lingkungan" onclick="setTab(this, 'lingkungan')">Lingkungan</button>
         </div>
 
         <!-- CARDS GRID -->

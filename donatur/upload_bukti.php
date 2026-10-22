@@ -18,6 +18,15 @@ if (!$prog) {
     $prog = $programs[2]; // Default ke program banjir (id: 3)
 }
 
+// Ambil daftar rekening / akun pembayaran yang didaftarkan pengusul untuk program ini
+try {
+    $stmtAkun = $pdo->prepare("SELECT * FROM akun_tujuan_pembayaran WHERE id_program = ? AND status_aktif = 1");
+    $stmtAkun->execute([$prog['id']]);
+    $daftarAkun = $stmtAkun->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $daftarAkun = [];
+}
+
 $page_title   = 'Upload Bukti Pembayaran - SIBERASA';
 $page_desc    = 'Unggah bukti pembayaran donasi Anda untuk verifikasi.';
 $current_page = 'program';
@@ -116,6 +125,72 @@ require_once '../includes/header.php';
                                 <strong class="val"><?= $metode ?></strong>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 3b. Rekening / Akun Tujuan Donasi (Dari Akun Pengusul) -->
+                <div class="ub-card" style="margin-bottom: 24px;">
+                    <h3 class="ub-card-title" style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                        <span><i class="fas fa-credit-card" style="color: #0284c7; margin-right: 8px;"></i>Rekening / Akun Tujuan Donasi</span>
+                        <span style="font-size: 0.75rem; font-weight: 500; color: #64748b;">Transfer ke salah satu rekening/akun di bawah</span>
+                    </h3>
+
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <?php if (!empty($daftarAkun)): ?>
+                            <?php foreach ($daftarAkun as $ak): ?>
+                                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div style="width: 42px; height: 42px; border-radius: 8px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
+                                            <?php if ($ak['metode'] === 'bank'): ?>
+                                                <i class="fas fa-building-columns"></i>
+                                            <?php elseif ($ak['metode'] === 'qris'): ?>
+                                                <i class="fas fa-qrcode"></i>
+                                            <?php else: ?>
+                                                <i class="fas fa-wallet"></i>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div>
+                                            <div style="font-weight: 700; color: #1e293b; font-size: 0.92rem;">
+                                                <?= htmlspecialchars($ak['nama_penyedia']) ?>
+                                            </div>
+                                            <div style="font-size: 0.78rem; color: #64748b;">
+                                                a.n. <?= htmlspecialchars($ak['nama_pemilik'] ?: 'Penyelenggara Program') ?>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                        <?php if (!empty($ak['nomor_tujuan'])): ?>
+                                            <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; font-weight: 700; font-family: monospace; font-size: 0.92rem; color: #0f172a;">
+                                                <?= htmlspecialchars($ak['nomor_tujuan']) ?>
+                                            </div>
+                                            <button type="button" onclick="navigator.clipboard.writeText('<?= htmlspecialchars($ak['nomor_tujuan']) ?>'); alert('Nomor rekening/akun berhasil disalin!');" style="padding: 6px 12px; background: #0284c7; color: #fff; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                                                <i class="far fa-copy"></i> Salin
+                                            </button>
+                                        <?php endif; ?>
+
+                                        <?php if (!empty($ak['gambar_qris'])): ?>
+                                            <a href="/Donasi/<?= htmlspecialchars($ak['gambar_qris']) ?>" target="_blank" style="padding: 6px 12px; background: #10b981; color: #fff; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+                                                <i class="fas fa-qrcode"></i> Lihat QRIS
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                                <div>
+                                    <div style="font-weight: 700; color: #1e293b;">Bank BCA (SIBERASA Resmi)</div>
+                                    <div style="font-size: 0.78rem; color: #64748b;">a.n. Yayasan SIBERASA Peduli</div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; font-weight: 700; font-family: monospace;">8271029384</div>
+                                    <button type="button" onclick="navigator.clipboard.writeText('8271029384'); alert('Nomor rekening berhasil disalin!');" style="padding: 6px 12px; background: #0284c7; color: #fff; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
+                                        <i class="far fa-copy"></i> Salin
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
 

@@ -1,45 +1,7 @@
 <?php
-// ── Data statis program donasi ──────────────────────────────────────
-$programs = [
-    [
-        'id'           => 1,
-        'kategori'     => 'Pendidikan',
-        'slug_kat'     => 'pendidikan',
-        'judul'        => 'Bantu Renovasi Sekolah Pelosok Negeri 1',
-        'org'          => 'Himpunan Mahasiswa Informatika (HIMAFOR)',
-        'target'       => 50000000,
-        'terkumpul'    => 32500000,
-        'persen'       => 65,
-        'sisa_hari'    => 12,
-        'img'          => 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=600&q=80',
-    ],
-    [
-        'id'           => 2,
-        'kategori'     => 'Sosial',
-        'slug_kat'     => 'sosial',
-        'judul'        => 'Paket alat tulis untuk panti asuhan',
-        'org'          => 'UKM Forum Kajian Kitab Kuning',
-        'target'       => 70000000,
-        'terkumpul'    => 45000000,
-        'persen'       => 75,
-        'sisa_hari'    => 9,
-        'img'          => 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=600&q=80',
-    ],
-    [
-        'id'           => 3,
-        'kategori'     => 'Kemanusiaan',
-        'slug_kat'     => 'kemanusiaan',
-        'judul'        => 'Bantuan untuk korban kebanjiran',
-        'org'          => 'Lembaga Dakwah Mahasiswa (LDM)',
-        'target'       => 80000000,
-        'terkumpul'    => 25600000,
-        'persen'       => 35,
-        'sisa_hari'    => 30,
-        'img'          => 'https://images.unsplash.com/photo-1547683905-f686c993aae5?w=600&q=80',
-    ],
-];
+require_once __DIR__ . '/../includes/data.php';
 
-function rp($n){ return 'Rp '.number_format($n,0,',','.'); }
+function rp($n){ return formatRupiah($n); }
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -422,8 +384,8 @@ img{display:block;max-width:100%}
           <!-- Gambar -->
           <div class="card-img">
             <img src="<?= $p['img'] ?>" alt="<?= htmlspecialchars($p['judul']) ?>"
-                 onerror="this.style.display='none'">
-            <span class="badge <?= $p['slug_kat'] ?>"><?= $p['kategori'] ?></span>
+                 onerror="this.src='/Donasi/assets/img/program_banjir.jpg'">
+            <span class="badge <?= $p['slug_kat'] ?>" style="background: <?= $p['badge_color'] ?>;"><?= htmlspecialchars($p['kategori']) ?></span>
           </div>
 
           <!-- Body -->

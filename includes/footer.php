@@ -77,7 +77,7 @@
         <button class="modal-close" onclick="closeModal()" aria-label="Tutup"><i class="fas fa-times"></i></button>
 
         <div class="modal-logo">
-            <img src="/logo.donasi.png" alt="SIBERASA">
+            <img src="/logo%20donasi.png" alt="SIBERASA" onerror="this.src='/Donasi/assets/img/logo_donasi.png'">
             <h3 id="modalTitle">Masuk ke SIBERASA</h3>
             <p id="modalSubtitle">Bergabung dan mulai berdonasi</p>
         </div>
