@@ -2,7 +2,7 @@
 $page_title   = 'Tentang Kami - SIBERASA';
 $page_desc    = 'Pelajari tentang SIBERASA, misi kami, dan tim yang berdedikasi untuk menghubungkan donatur dengan program kemanusiaan.';
 $current_page = 'tentang';
-require_once '../includes/data.php';
+require_once __DIR__ . '/../assets/config/database.php';
 require_once '../includes/header.php';
 ?>
 

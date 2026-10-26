@@ -143,21 +143,25 @@ function getPhotoUrl($filename) {
 
     :root {
       --primary: #0284c7;
-      --primary-hover: #0369a1;
       --primary-light: #e0f2fe;
-      --text-main: #1e293b;
+      --primary-hover: #0369a1;
+      --text-main: #0f172a;
       --text-muted: #64748b;
       --text-light: #94a3b8;
+      --bg-body: #f8fafc;
       --bg-page: #f8fafc;
       --border: #e2e8f0;
+      --border-color: #e2e8f0;
       --border-blue: #38bdf8;
+      --sidebar-width: 260px;
       --sidebar-w: 260px;
+      --header-height: 64px;
       --header-h: 64px;
       --radius-sm: 8px;
       --radius-md: 12px;
       --radius-lg: 16px;
       --radius-pill: 9999px;
-      --transition: all 0.2s ease;
+      --transition: all 0.25s ease;
     }
 
     html, body {
@@ -182,23 +186,26 @@ function getPhotoUrl($filename) {
       overflow: hidden;
     }
 
-    /* Sidebar */
+    /* ── Sidebar (Kolom Kiri Tetap) ──────────────────────────────── */
     .app-sidebar {
-      width: var(--sidebar-w);
-      min-width: var(--sidebar-w);
+      width: var(--sidebar-width);
+      min-width: var(--sidebar-width);
+      max-width: var(--sidebar-width);
       height: 100vh;
       background: #ffffff;
-      border-right: 1px solid var(--border);
+      border-right: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       padding: 20px 18px;
       overflow-y: auto;
+      overflow-x: hidden;
       flex-shrink: 0;
       z-index: 100;
       transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
+    /* Brand Logo + Hamburger di Atas Sidebar */
     .sidebar-brand {
       display: flex;
       align-items: center;
@@ -207,48 +214,77 @@ function getPhotoUrl($filename) {
       padding: 0 4px;
     }
 
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .brand-logo img {
       height: 48px;
       width: auto;
+      max-width: 180px;
       object-fit: contain;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.08));
+      transition: transform 0.2s ease;
+    }
+
+    .brand-logo img:hover {
+      transform: scale(1.03);
     }
 
     .sidebar-toggle-btn {
       background: none;
       border: none;
       color: var(--primary);
-      font-size: 1.3rem;
+      font-size: 1.35rem;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       padding: 6px;
       border-radius: var(--radius-sm);
+      transition: var(--transition);
     }
 
+    .sidebar-toggle-btn:hover {
+      background: var(--primary-light);
+    }
+
+    /* Profil Pengusul Card */
     .user-profile-badge {
       display: flex;
       align-items: center;
       gap: 12px;
       background: #ffffff;
-      border: 1px solid var(--border);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
       padding: 12px 14px;
       margin-bottom: 20px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
     }
 
     .user-profile-avatar {
       width: 42px;
       height: 42px;
       border-radius: 50%;
-      background: var(--primary);
-      color: #fff;
+      background: #0284c7;
+      color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.5rem;
+      font-size: 1.6rem;
       flex-shrink: 0;
     }
 
+    .user-profile-info {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
     .user-profile-role {
-      font-size: 0.92rem;
+      font-size: 0.95rem;
       font-weight: 700;
       color: var(--text-main);
       line-height: 1.2;
@@ -263,6 +299,7 @@ function getPhotoUrl($filename) {
       margin-top: 2px;
     }
 
+    /* Menu Navigasi */
     .nav-list {
       list-style: none;
       display: flex;
@@ -274,7 +311,7 @@ function getPhotoUrl($filename) {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 10px 14px;
+      padding: 11px 16px;
       border-radius: 10px;
       font-size: 0.875rem;
       font-weight: 500;
@@ -287,11 +324,17 @@ function getPhotoUrl($filename) {
       font-size: 1.05rem;
       width: 20px;
       text-align: center;
+      color: #64748b;
+      transition: var(--transition);
     }
 
     .nav-item a:hover {
       background: #f1f5f9;
       color: var(--text-main);
+    }
+
+    .nav-item a:hover i {
+      color: var(--primary);
     }
 
     .nav-item.active a {
@@ -304,10 +347,11 @@ function getPhotoUrl($filename) {
       color: var(--primary);
     }
 
+    /* Sidebar Footer / Logout */
     .sidebar-footer {
-      padding-top: 14px;
-      border-top: 1px solid var(--border);
-      margin-top: 14px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+      margin-top: 16px;
     }
 
     .logout-link {
@@ -325,6 +369,10 @@ function getPhotoUrl($filename) {
     .logout-link:hover {
       background: #fee2e2;
       color: #dc2626;
+    }
+
+    .logout-link i {
+      font-size: 1.1rem;
     }
 
     /* Main Area */
@@ -947,9 +995,11 @@ function getPhotoUrl($filename) {
 
   <div class="dashboard-container">
 
-    <!-- ── Sidebar ── -->
+    <!-- ── Kolom Kiri: Sidebar (Identik dengan Dashboard Pengusul) ── -->
     <aside class="app-sidebar" id="appSidebar">
-      <div>
+      <div class="sidebar-top">
+        
+        <!-- Logo Brand & Tombol Toggle -->
         <div class="sidebar-brand">
           <a href="/Donasi/pengusul/dashboard.php" class="brand-logo">
             <img src="/logo%20donasi.png" alt="SIBERASA Logo" onerror="this.src='../assets/img/logo_donasi.png'">
@@ -959,6 +1009,7 @@ function getPhotoUrl($filename) {
           </button>
         </div>
 
+        <!-- User Profile Card -->
         <div class="user-profile-badge">
           <div class="user-profile-avatar">
             <i class="fa-solid fa-circle-user"></i>
@@ -969,6 +1020,7 @@ function getPhotoUrl($filename) {
           </div>
         </div>
 
+        <!-- Navigation Menu -->
         <ul class="nav-list">
           <li class="nav-item">
             <a href="/Donasi/pengusul/dashboard.php">
@@ -994,6 +1046,7 @@ function getPhotoUrl($filename) {
               <span>Dana Terkumpul</span>
             </a>
           </li>
+          <!-- Penambahan Menu Sesuai Permintaan User -->
           <li class="nav-item">
             <a href="/Donasi/pengusul/data_penggalangan.php">
               <i class="fa-solid fa-hand-holding-dollar"></i>
@@ -1007,8 +1060,10 @@ function getPhotoUrl($filename) {
             </a>
           </li>
         </ul>
+
       </div>
 
+      <!-- Sidebar Bottom: Logout -->
       <div class="sidebar-footer">
         <a href="/Donasi/auth/logout.php" class="logout-link">
           <i class="fa-solid fa-arrow-right-from-bracket"></i>

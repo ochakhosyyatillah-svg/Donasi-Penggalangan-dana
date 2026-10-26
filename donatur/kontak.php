@@ -2,7 +2,7 @@
 $page_title   = 'Kontak - SIBERASA';
 $page_desc    = 'Hubungi tim SIBERASA untuk pertanyaan, saran, atau kolaborasi program donasi.';
 $current_page = 'kontak';
-require_once '../includes/data.php';
+require_once __DIR__ . '/../assets/config/database.php';
 require_once '../includes/header.php';
 
 $success = false;

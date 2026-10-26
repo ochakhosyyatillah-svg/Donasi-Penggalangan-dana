@@ -1,5 +1,5 @@
 <?php
-require_once '../includes/data.php';
+require_once __DIR__ . '/../assets/config/database.php';
 
 // Parameter URL atau default ke program #3 (Bantuan Korban Banjir) persis seperti di desain
 $id      = isset($_GET['id']) ? (int)$_GET['id'] : 3;
@@ -47,8 +47,8 @@ require_once '../includes/header.php';
 
         <!-- ── TOMBOL KEMBALI ── -->
         <div class="ub-back-row">
-            <a href="donasi.php?id=<?= $prog['id'] ?>" class="ub-btn-back">
-                <i class="fas fa-arrow-left"></i> Kembali ke Detail Donasi
+            <a href="pembayaran.php?id=<?= $prog['id'] ?>&nominal=<?= $nominal ?>&metode=<?= urlencode($metode) ?>" class="ub-btn-back">
+                <i class="fas fa-arrow-left"></i> Kembali ke Detail Pembayaran
             </a>
         </div>
 

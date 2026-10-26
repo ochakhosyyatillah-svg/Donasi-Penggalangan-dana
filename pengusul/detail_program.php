@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 require_once __DIR__ . '/../assets/config/database.php';
 
@@ -143,11 +143,14 @@ $tglBuat    = !empty($prog['dibuat_pada'])      ? date('d M Y', strtotime($prog[
       flex-shrink: 0; z-index: 100; transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
     }
     .sidebar-brand { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; padding: 0 4px; }
-    .brand-logo img { height: 48px; width: auto; max-width: 180px; object-fit: contain; }
-    .sidebar-toggle-btn { background: none; border: none; color: var(--primary); font-size: 1.35rem; cursor: pointer; padding: 6px; border-radius: var(--radius-sm); transition: var(--transition); }
+    .brand-logo { display: flex; align-items: center; gap: 8px; }
+    .brand-logo img { height: 48px; width: auto; max-width: 180px; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.08)); transition: transform 0.2s ease; }
+    .brand-logo img:hover { transform: scale(1.03); }
+    .sidebar-toggle-btn { background: none; border: none; color: var(--primary); font-size: 1.35rem; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 6px; border-radius: var(--radius-sm); transition: var(--transition); }
     .sidebar-toggle-btn:hover { background: var(--primary-light); }
-    .user-profile-badge { display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 20px; }
-    .user-profile-avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0; }
+    .user-profile-badge { display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+    .user-profile-avatar { width: 42px; height: 42px; border-radius: 50%; background: #0284c7; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0; }
+    .user-profile-info { display: flex; flex-direction: column; overflow: hidden; }
     .user-profile-role { font-size: .95rem; font-weight: 700; color: var(--text-main); line-height: 1.2; display: block; }
     .user-profile-name { font-size: .8rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; display: block; }
     .nav-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
@@ -160,6 +163,7 @@ $tglBuat    = !empty($prog['dibuat_pada'])      ? date('d M Y', strtotime($prog[
     .sidebar-footer { padding-top: 16px; border-top: 1px solid var(--border-color); margin-top: 16px; }
     .logout-link { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: .88rem; font-weight: 500; color: var(--text-muted); transition: var(--transition); }
     .logout-link:hover { background: #fee2e2; color: #dc2626; }
+    .logout-link i { font-size: 1.1rem; }
 
     /* ── Main Wrapper ── */
     .main-wrapper { flex: 1; min-width: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-body); }
@@ -315,35 +319,80 @@ $tglBuat    = !empty($prog['dibuat_pada'])      ? date('d M Y', strtotime($prog[
 
   <div class="dashboard-container">
 
-    <!-- Sidebar -->
+    <!-- ── Kolom Kiri: Sidebar (Identik dengan Dashboard Pengusul) ── -->
     <aside class="app-sidebar" id="appSidebar">
-      <div>
+      <div class="sidebar-top">
+        
+        <!-- Logo Brand & Tombol Toggle -->
         <div class="sidebar-brand">
           <a href="/Donasi/pengusul/dashboard.php" class="brand-logo">
             <img src="/logo%20donasi.png" alt="SIBERASA Logo" onerror="this.src='../assets/img/logo_donasi.png'">
           </a>
-          <button id="sidebarToggle" class="sidebar-toggle-btn"><i class="fa-solid fa-bars"></i></button>
+          <button id="sidebarToggle" class="sidebar-toggle-btn" title="Toggle Menu">
+            <i class="fa-solid fa-bars"></i>
+          </button>
         </div>
 
+        <!-- User Profile Card -->
         <div class="user-profile-badge">
-          <div class="user-profile-avatar"><i class="fa-solid fa-circle-user"></i></div>
-          <div>
+          <div class="user-profile-avatar">
+            <i class="fa-solid fa-circle-user"></i>
+          </div>
+          <div class="user-profile-info">
             <span class="user-profile-role">Pengusul</span>
             <span class="user-profile-name"><?= htmlspecialchars($namaPengusul) ?></span>
           </div>
         </div>
 
+        <!-- Navigation Menu -->
         <ul class="nav-list">
-          <li class="nav-item"><a href="/Donasi/pengusul/dashboard.php"><i class="fa-solid fa-table-cells-large"></i><span>Dashboard</span></a></li>
-          <li class="nav-item"><a href="/Donasi/pengusul/ajukan_program.php"><i class="fa-regular fa-id-badge"></i><span>Ajukan Program Donasi</span></a></li>
-          <li class="nav-item active"><a href="/Donasi/pengusul/status_pengajuan.php"><i class="fa-regular fa-rectangle-list"></i><span>Status Pengajuan</span></a></li>
-          <li class="nav-item"><a href="/Donasi/pengusul/dana_terkumpul.php"><i class="fa-solid fa-building-columns"></i><span>Dana Terkumpul</span></a></li>
-          <li class="nav-item"><a href="/Donasi/pengusul/data_penggalangan.php"><i class="fa-solid fa-hand-holding-dollar"></i><span>Data Penggalangan Dana</span></a></li>
-          <li class="nav-item"><a href="/Donasi/pengusul/laporan_donasi.php"><i class="fa-solid fa-file-invoice-dollar"></i><span>Laporan Donasi</span></a></li>
+          <li class="nav-item">
+            <a href="/Donasi/pengusul/dashboard.php">
+              <i class="fa-solid fa-table-cells-large"></i>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="/Donasi/pengusul/ajukan_program.php">
+              <i class="fa-regular fa-id-badge"></i>
+              <span>Ajukan Program Donasi</span>
+            </a>
+          </li>
+          <li class="nav-item active">
+            <a href="/Donasi/pengusul/status_pengajuan.php">
+              <i class="fa-regular fa-rectangle-list"></i>
+              <span>Status Pengajuan</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="/Donasi/pengusul/dana_terkumpul.php">
+              <i class="fa-solid fa-building-columns"></i>
+              <span>Dana Terkumpul</span>
+            </a>
+          </li>
+          <!-- Penambahan Menu Sesuai Permintaan User -->
+          <li class="nav-item">
+            <a href="/Donasi/pengusul/data_penggalangan.php">
+              <i class="fa-solid fa-hand-holding-dollar"></i>
+              <span>Data Penggalangan Dana</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="/Donasi/pengusul/laporan_donasi.php">
+              <i class="fa-solid fa-file-invoice-dollar"></i>
+              <span>Laporan Donasi</span>
+            </a>
+          </li>
         </ul>
+
       </div>
+
+      <!-- Sidebar Bottom: Logout -->
       <div class="sidebar-footer">
-        <a href="/Donasi/auth/logout.php" class="logout-link"><i class="fa-solid fa-arrow-right-from-bracket"></i><span>Logout</span></a>
+        <a href="/Donasi/auth/logout.php" class="logout-link">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          <span>Logout</span>
+        </a>
       </div>
     </aside>
 

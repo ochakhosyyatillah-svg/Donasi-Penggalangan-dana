@@ -1,10 +1,23 @@
 <?php
-require_once '../includes/data.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 1;
+require_once __DIR__ . '/../assets/config/database.php';
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : (isset($_SESSION['donasi_program_id']) ? (int)$_SESSION['donasi_program_id'] : (isset($_SESSION['detail_program_id']) ? (int)$_SESSION['detail_program_id'] : 1));
+if (isset($_GET['id'])) {
+    $_SESSION['donasi_program_id'] = $id;
+    $_SESSION['detail_program_id'] = $id;
+}
+
 $prog = null;
 foreach ($programs as $p) {
     if ($p['id'] === $id) { $prog = $p; break; }
+}
+
+if (!$prog && !empty($programs)) {
+    $prog = $programs[0];
 }
 
 if (!$prog) {
@@ -16,13 +29,60 @@ $page_title = 'Formulir Donasi - ' . htmlspecialchars($prog['judul']);
 $page_desc  = 'Formulir donasi untuk program ' . htmlspecialchars($prog['judul']);
 $current_page = 'program';
 
+// Ambil akun tujuan pembayaran yang didaftarkan pengusul
+$daftarAkunProgram = [];
+if (isset($pdo)) {
+    try {
+        $stmtAkun = $pdo->prepare("SELECT * FROM akun_tujuan_pembayaran WHERE id_program = ? AND status_aktif = 1 ORDER BY id_akun ASC");
+        $stmtAkun->execute([$prog['id']]);
+        $daftarAkunProgram = $stmtAkun->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $daftarAkunProgram = [];
+    }
+}
+
+$hasBank = false;
+$hasEwallet = false;
+$hasQris = false;
+$bankPenyedia = [];
+$ewalletPenyedia = [];
+
+foreach ($daftarAkunProgram as $ak) {
+    $m = strtolower(trim($ak['metode']));
+    if ($m === 'bank' || strpos($m, 'transfer') !== false) {
+        $hasBank = true;
+        $bankPenyedia[] = trim($ak['nama_penyedia']);
+    } elseif ($m === 'ewallet' || $m === 'e-wallet' || strpos($m, 'wallet') !== false) {
+        $hasEwallet = true;
+        $ewalletPenyedia[] = trim($ak['nama_penyedia']);
+    } elseif ($m === 'qris' || !empty($ak['gambar_qris'])) {
+        $hasQris = true;
+    }
+}
+
+// Fallback jika pengusul belum input akun sama sekali
+if (!$hasBank && !$hasEwallet && !$hasQris) {
+    $hasBank = true;
+    $hasEwallet = true;
+    $hasQris = true;
+}
+
+// Tentukan metode mana yang default dicentang
+if ($hasQris) {
+    $defaultMetode = 'qris';
+} elseif ($hasBank) {
+    $defaultMetode = 'transfer';
+} else {
+    $defaultMetode = 'ewallet';
+}
+
 require_once '../includes/header.php';
 ?>
 
 <div style="background: #f4f8fb; min-height: 100vh; padding: 40px 0;">
     <div class="container" style="max-width: 1080px; margin: 0 auto; padding: 0 24px;">
         
-        <form action="upload_bukti.php" method="GET" id="formDonasiUtama">
+        <form action="pembayaran.php" method="GET" id="formDonasiUtama">
             <input type="hidden" name="id" value="<?= $prog['id'] ?>">
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start;">
@@ -104,38 +164,48 @@ require_once '../includes/header.php';
                     
                     <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
                         
-                        <!-- QRIS -->
+                        <!-- QRIS (jika didaftarkan pengusul atau default) -->
+                        <?php if ($hasQris): ?>
                         <label class="payment-method-label">
-                            <input type="radio" name="metode" value="qris" required checked>
+                            <input type="radio" name="metode" value="qris" required <?= ($defaultMetode === 'qris') ? 'checked' : '' ?>>
                             <span class="radio-custom"></span>
                             <i class="fas fa-qrcode payment-icon"></i>
                             <div>
                                 <span class="payment-name">QRIS</span>
-                                <p style="font-size:0.75rem; color:#a0aec0; margin:2px 0 0;">Scan QR dari semua e-wallet & bank</p>
+                                <p style="font-size:0.75rem; color:#a0aec0; margin:2px 0 0;">Scan QR dari semua e-wallet & m-banking</p>
                             </div>
                         </label>
+                        <?php endif; ?>
 
                         <!-- Transfer Bank -->
+                        <?php if ($hasBank): 
+                            $bankText = !empty($bankPenyedia) ? implode(' · ', array_unique($bankPenyedia)) : 'BCA · BNI · Mandiri · BRI';
+                        ?>
                         <label class="payment-method-label">
-                            <input type="radio" name="metode" value="transfer">
+                            <input type="radio" name="metode" value="transfer" required <?= ($defaultMetode === 'transfer') ? 'checked' : '' ?>>
                             <span class="radio-custom"></span>
                             <i class="fas fa-university payment-icon"></i>
                             <div>
                                 <span class="payment-name">Transfer Bank</span>
-                                <p style="font-size:0.75rem; color:#a0aec0; margin:2px 0 0;">BCA · BNI · Mandiri · BRI</p>
+                                <p style="font-size:0.75rem; color:#a0aec0; margin:2px 0 0;"><?= htmlspecialchars($bankText) ?></p>
                             </div>
                         </label>
+                        <?php endif; ?>
 
                         <!-- E-Wallet -->
+                        <?php if ($hasEwallet): 
+                            $ewalletText = !empty($ewalletPenyedia) ? implode(' · ', array_unique($ewalletPenyedia)) : 'GoPay · OVO · Dana · ShopeePay';
+                        ?>
                         <label class="payment-method-label">
-                            <input type="radio" name="metode" value="ewallet">
+                            <input type="radio" name="metode" value="ewallet" required <?= ($defaultMetode === 'ewallet') ? 'checked' : '' ?>>
                             <span class="radio-custom"></span>
                             <i class="fas fa-wallet payment-icon"></i>
                             <div>
                                 <span class="payment-name">E-Wallet</span>
-                                <p style="font-size:0.75rem; color:#a0aec0; margin:2px 0 0;">GoPay · OVO · Dana · ShopeePay</p>
+                                <p style="font-size:0.75rem; color:#a0aec0; margin:2px 0 0;"><?= htmlspecialchars($ewalletText) ?></p>
                             </div>
                         </label>
+                        <?php endif; ?>
 
                     </div>
 
@@ -390,6 +460,11 @@ document.getElementById('inputNominal').addEventListener('input', function() {
 
 // Init summary
 updateSummary();
+
+// Menghapus ?id=... dari address bar browser agar URL tampil bersih: http://localhost/Donasi/donatur/donasi.php
+if (window.location.search) {
+    window.history.replaceState(null, '', window.location.pathname);
+}
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

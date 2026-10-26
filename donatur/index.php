@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../includes/data.php';
+require_once __DIR__ . '/../assets/config/database.php';
 
 function rp($n){ return formatRupiah($n); }
 ?>

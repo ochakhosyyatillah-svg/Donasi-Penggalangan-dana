@@ -126,8 +126,15 @@ try {
         $params[] = "%$search%";
     }
     if ($filterStatus !== '') {
-        $where   .= ' AND p.status_program = ?';
-        $params[] = $filterStatus;
+        // 'disetujui' di filter mencakup 'berlangsung' juga (seperti di sisi pengusul)
+        if ($filterStatus === 'disetujui') {
+            $where   .= " AND p.status_program IN ('disetujui', 'berlangsung')";
+        } elseif ($filterStatus === 'menunggu') {
+            $where   .= " AND p.status_program = 'menunggu'";
+        } else {
+            $where   .= ' AND p.status_program = ?';
+            $params[] = $filterStatus;
+        }
     }
 
     // Total rows untuk pagination
@@ -163,14 +170,14 @@ function rpK($n) {
 }
 function statusBadge($s) {
     $map = [
-        'menunggu'    => ['label' => 'Menunggu',    'class' => 'badge-warning'],
-        'disetujui'   => ['label' => 'Disetujui',   'class' => 'badge-info'],
-        'berlangsung' => ['label' => 'Aktif',        'class' => 'badge-success'],
+        'menunggu'    => ['label' => 'Dalam Proses', 'class' => 'badge-warning'],
+        'disetujui'   => ['label' => 'Disetujui',    'class' => 'badge-info'],
+        'berlangsung' => ['label' => 'Berlangsung',  'class' => 'badge-success'],
         'selesai'     => ['label' => 'Selesai',      'class' => 'badge-secondary'],
         'ditolak'     => ['label' => 'Ditolak',      'class' => 'badge-danger'],
         'dibatalkan'  => ['label' => 'Dibatalkan',   'class' => 'badge-danger'],
     ];
-    $d = $map[$s] ?? ['label' => ucfirst($s), 'class' => 'badge-secondary'];
+    $d = $map[$s] ?? ['label' => ucfirst(str_replace('_', ' ', $s)), 'class' => 'badge-secondary'];
     return '<span class="badge-status ' . $d['class'] . '">' . $d['label'] . '</span>';
 }
 ?>
@@ -761,9 +768,10 @@ textarea.form-control{resize:vertical;min-height:90px}
         </div>
         <select name="status" class="filter-select" onchange="document.getElementById('filterForm').submit()">
           <option value="">Semua Status</option>
-          <?php foreach(['menunggu'=>'Menunggu','disetujui'=>'Disetujui','berlangsung'=>'Aktif','selesai'=>'Selesai','ditolak'=>'Ditolak','dibatalkan'=>'Dibatalkan'] as $val=>$lbl): ?>
-          <option value="<?= $val ?>" <?= $filterStatus===$val?'selected':'' ?>><?= $lbl ?></option>
-          <?php endforeach; ?>
+          <option value="menunggu"  <?= $filterStatus==='menunggu'  ?'selected':'' ?>>Dalam Proses</option>
+          <option value="disetujui" <?= $filterStatus==='disetujui' ?'selected':'' ?>>Disetujui</option>
+          <option value="ditolak"   <?= $filterStatus==='ditolak'   ?'selected':'' ?>>Ditolak</option>
+          <option value="selesai"   <?= $filterStatus==='selesai'   ?'selected':'' ?>>Selesai</option>
         </select>
         <button type="submit" style="display:none"></button>
       </form>
@@ -918,9 +926,10 @@ textarea.form-control{resize:vertical;min-height:90px}
         <div class="form-group">
           <label>Status</label>
           <select name="status_program" class="form-control">
-            <option value="menunggu">Menunggu</option>
-            <option value="disetujui">Disetujui</option>
-            <option value="berlangsung" selected>Aktif</option>
+            <option value="menunggu">Dalam Proses</option>
+            <option value="disetujui" selected>Disetujui</option>
+            <option value="ditolak">Ditolak</option>
+            <option value="selesai">Selesai</option>
           </select>
         </div>
       </div>
@@ -985,12 +994,10 @@ textarea.form-control{resize:vertical;min-height:90px}
       <div class="form-group">
         <label>Status</label>
         <select name="status_program" id="edit_status" class="form-control">
-          <option value="menunggu">Menunggu</option>
+          <option value="menunggu">Dalam Proses</option>
           <option value="disetujui">Disetujui</option>
-          <option value="berlangsung">Aktif</option>
-          <option value="selesai">Selesai</option>
           <option value="ditolak">Ditolak</option>
-          <option value="dibatalkan">Dibatalkan</option>
+          <option value="selesai">Selesai</option>
         </select>
       </div>
       <div class="form-footer">

@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once __DIR__ . '/../assets/config/database.php';
 
 // Pastikan pengguna sudah login sebagai admin
@@ -10,52 +12,107 @@ if (!isset($_SESSION['id_user']) || $_SESSION['role'] !== 'admin') {
 
 $namaAdmin = $_SESSION['nama'] ?? 'Admin';
 
-// ── Ambil data statistik dashboard ──────────────────────────────────
+// ── Ambil data statistik dashboard dari database ─────────────────────
 try {
-    // Total Program Donasi
-    $stmtProgram = $pdo->query("SELECT COUNT(*) AS total FROM program_donasi");
-    $totalProgram = $stmtProgram->fetch()['total'] ?? 0;
+    // 1. Total Program Donasi & rincian status
+    $stmtProg = $pdo->query("
+        SELECT 
+            COUNT(*) AS total,
+            COALESCE(SUM(CASE WHEN status_program IN ('disetujui', 'berlangsung') THEN 1 ELSE 0 END), 0) AS aktif,
+            COALESCE(SUM(CASE WHEN status_program = 'menunggu' THEN 1 ELSE 0 END), 0) AS menunggu
+        FROM program_donasi
+    ");
+    $statProg = $stmtProg->fetch();
+    $totalProgram      = (int)($statProg['total'] ?? 0);
+    $totalProgAktif    = (int)($statProg['aktif'] ?? 0);
+    $totalProgMenunggu = (int)($statProg['menunggu'] ?? 0);
 
-    // Total Donatur (unik)
-    $stmtDonatur = $pdo->query("SELECT COUNT(DISTINCT email_donatur) AS total FROM donasi");
-    $totalDonatur = $stmtDonatur->fetch()['total'] ?? 0;
+    // 2. Total Donatur unik (hanya donasi berhasil) & Total Transaksi
+    $stmtDonatur = $pdo->query("
+        SELECT 
+            COUNT(DISTINCT COALESCE(NULLIF(email_donatur, ''), nama_donatur)) AS total_donatur,
+            COUNT(*) AS total_transaksi
+        FROM donasi
+        WHERE status_donasi = 'berhasil'
+    ");
+    $statDonatur = $stmtDonatur->fetch();
+    $totalDonatur   = (int)($statDonatur['total_donatur'] ?? 0);
+    $totalTransaksi = (int)($statDonatur['total_transaksi'] ?? 0);
 
-    // Total Dana Terkumpul
-    $stmtDana = $pdo->query("SELECT COALESCE(SUM(nominal), 0) AS total FROM donasi WHERE status_donasi = 'berhasil'");
-    $totalDana = $stmtDana->fetch()['total'] ?? 0;
+    // 3. Total Dana Terkumpul & Bulan ini (berhasil)
+    $stmtDana = $pdo->query("
+        SELECT 
+            COALESCE(SUM(nominal), 0) AS total,
+            COALESCE(SUM(CASE WHEN MONTH(tanggal_donasi) = MONTH(CURRENT_DATE()) AND YEAR(tanggal_donasi) = YEAR(CURRENT_DATE()) THEN nominal ELSE 0 END), 0) AS bulan_ini
+        FROM donasi
+        WHERE status_donasi = 'berhasil'
+    ");
+    $statDana = $stmtDana->fetch();
+    $totalDana    = (float)($statDana['total'] ?? 0);
+    $danaBulanIni = (float)($statDana['bulan_ini'] ?? 0);
 
-    // Menunggu Verifikasi
-    $stmtVerif = $pdo->query("SELECT COUNT(*) AS total FROM users WHERE status_verifikasi = 'menunggu'");
-    $menungguVerif = $stmtVerif->fetch()['total'] ?? 0;
+    // 4. Menunggu Verifikasi (Program menunggu + Pembayaran menunggu + Pengguna menunggu)
+    $verifProgram    = (int)$pdo->query("SELECT COUNT(*) FROM program_donasi WHERE status_program = 'menunggu'")->fetchColumn();
+    $verifPembayaran = (int)$pdo->query("SELECT COUNT(*) FROM pembayaran WHERE status_verifikasi = 'menunggu'")->fetchColumn();
+    $verifUser       = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE status_verifikasi = 'menunggu'")->fetchColumn();
+    $menungguVerif   = $verifProgram + $verifPembayaran + $verifUser;
 
-    // Donasi Terbaru (5 terakhir)
+    // 5. Donasi Terbaru (5 transaksi terakhir dari database)
     $stmtRecent = $pdo->query("
-        SELECT d.id_donasi, d.nominal AS jumlah, d.status_donasi AS status, d.tanggal_donasi AS created_at, p.judul AS nama_program
+        SELECT 
+            d.id_donasi, 
+            d.nama_donatur,
+            d.nominal AS jumlah, 
+            d.status_donasi AS status, 
+            d.tanggal_donasi AS created_at, 
+            p.judul AS nama_program,
+            p.kategori AS kategori_program
         FROM donasi d
         LEFT JOIN program_donasi p ON d.id_program = p.id_program
-        ORDER BY d.tanggal_donasi DESC
+        ORDER BY d.tanggal_donasi DESC, d.id_donasi DESC
         LIMIT 5
     ");
     $donasiTerbaru = $stmtRecent->fetchAll();
 
-    // Data Chart - 6 bulan terakhir
+    // 6. Data Chart - 6 bulan terakhir dinamis dari database (tanpa dummy statis)
+    $monthsMap = [];
+    for ($i = 5; $i >= 0; $i--) {
+        $ym = date('Y-m', strtotime("-$i months"));
+        $monthsMap[$ym] = 0;
+    }
+
     $stmtChart = $pdo->query("
         SELECT 
             DATE_FORMAT(tanggal_donasi, '%Y-%m') AS bulan,
-            SUM(nominal) AS total
+            COALESCE(SUM(nominal), 0) AS total
         FROM donasi
         WHERE status_donasi = 'berhasil'
           AND tanggal_donasi >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
         GROUP BY DATE_FORMAT(tanggal_donasi, '%Y-%m')
         ORDER BY bulan ASC
     ");
-    $chartData = $stmtChart->fetchAll();
+    while ($row = $stmtChart->fetch()) {
+        if (isset($monthsMap[$row['bulan']])) {
+            $monthsMap[$row['bulan']] = (float)$row['total'];
+        }
+    }
+
+    $chartLabels = [];
+    $chartValues = [];
+    foreach ($monthsMap as $ym => $val) {
+        $chartLabels[] = bulanIndo($ym);
+        $chartValues[] = (int)$val;
+    }
 
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    $totalProgram = $totalDonatur = $totalDana = $menungguVerif = 0;
+    $totalProgram = $totalProgAktif = $totalProgMenunggu = 0;
+    $totalDonatur = $totalTransaksi = 0;
+    $totalDana = $danaBulanIni = 0;
+    $verifProgram = $verifPembayaran = $verifUser = $menungguVerif = 0;
     $donasiTerbaru = [];
-    $chartData = [];
+    $chartLabels = [];
+    $chartValues = [];
 }
 
 // Format rupiah
@@ -74,18 +131,22 @@ function bulanIndo($ym) {
     return $bulanNames[$parts[1]] ?? $parts[1];
 }
 
-// Siapkan data chart untuk JS
-$chartLabels = [];
-$chartValues = [];
-foreach ($chartData as $row) {
-    $chartLabels[] = bulanIndo($row['bulan']);
-    $chartValues[] = (int) $row['total'];
-}
-
-// Jika data chart kosong, beri data dummy agar chart terlihat
-if (empty($chartLabels)) {
-    $chartLabels = ['Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep'];
-    $chartValues = [2500000, 4200000, 3800000, 5100000, 8500000, 12450000];
+// Helper format status donasi
+function formatStatusDonasi($st) {
+    switch ($st) {
+        case 'berhasil':
+            return ['label' => 'Berhasil', 'class' => 'berhasil'];
+        case 'menunggu_verifikasi':
+            return ['label' => 'Menunggu Verifikasi', 'class' => 'menunggu'];
+        case 'menunggu_pembayaran':
+            return ['label' => 'Menunggu Pembayaran', 'class' => 'menunggu_bayar'];
+        case 'ditolak':
+            return ['label' => 'Ditolak', 'class' => 'ditolak'];
+        case 'dibatalkan':
+            return ['label' => 'Dibatalkan', 'class' => 'dibatalkan'];
+        default:
+            return ['label' => ucfirst(str_replace('_', ' ', (string)$st)), 'class' => 'menunggu'];
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -581,15 +642,59 @@ ul{list-style:none}
   text-transform:capitalize;
   align-self:center;
 }
-.donasi-status.menunggu{
+.donasi-status.menunggu,
+.donasi-status.menunggu_verifikasi{
   background:#fef3c7;color:#d97706;
 }
-.donasi-status.diterima{
+.donasi-status.menunggu_bayar{
+  background:#e0f2fe;color:#0284c7;
+}
+.donasi-status.diterima,
+.donasi-status.berhasil{
   background:#d1fae5;color:#059669;
 }
 .donasi-status.ditolak{
   background:#fee2e2;color:#dc2626;
 }
+.donasi-status.dibatalkan{
+  background:#f1f5f9;color:#64748b;
+}
+
+/* ── Empty State ─────────────────────────────────────────────── */
+.empty-donasi-box{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:36px 20px;
+  background:#f8fafc;
+  border-radius:12px;
+  border:1px dashed #cbd5e1;
+}
+.empty-donasi-box .empty-icon-wrap{
+  width:48px;height:48px;
+  border-radius:50%;
+  background:#e2e8f0;
+  display:flex;align-items:center;justify-content:center;
+  color:#64748b;
+  font-size:1.2rem;
+  margin-bottom:10px;
+}
+.empty-donasi-box h4{
+  font-size:.9rem;
+  font-weight:600;
+  color:#334155;
+  margin-bottom:4px;
+}
+.empty-donasi-box p{
+  font-size:.76rem;
+  color:#64748b;
+  max-width:260px;
+  line-height:1.4;
+}
+
+
 
 /* ── Mobile Overlay ──────────────────────────────────────────── */
 .sidebar-overlay{
@@ -741,6 +846,8 @@ ul{list-style:none}
       <p>Ringkasan aktivitas sistem donasi hari ini</p>
     </div>
 
+
+
     <!-- ── Stat Cards ───────────────────────────────────────── -->
     <div class="stats-grid">
 
@@ -751,7 +858,7 @@ ul{list-style:none}
         <div class="stat-label">Total Program Donasi</div>
         <div class="stat-value"><?= $totalProgram ?></div>
         <div class="stat-change up">
-          <i class="fas fa-arrow-up"></i> +2 dari bulan lalu
+          <i class="fas fa-check-circle"></i> <?= $totalProgAktif ?> aktif<?= ($totalProgMenunggu > 0) ? " &bull; {$totalProgMenunggu} pending" : "" ?>
         </div>
       </div>
 
@@ -761,8 +868,8 @@ ul{list-style:none}
         </div>
         <div class="stat-label">Total Donatur</div>
         <div class="stat-value"><?= $totalDonatur ?></div>
-        <div class="stat-change up">
-          <i class="fas fa-arrow-up"></i> +12 dari bulan lalu
+        <div class="stat-change info">
+          <i class="fas fa-receipt"></i> <?= $totalTransaksi ?> donasi terverifikasi
         </div>
       </div>
 
@@ -773,19 +880,25 @@ ul{list-style:none}
         <div class="stat-label">Total Dana Terkumpul</div>
         <div class="stat-value"><?= rpAdmin($totalDana) ?></div>
         <div class="stat-change up">
-          <i class="fas fa-arrow-up"></i> +16% dari bulan lalu
+          <i class="fas fa-calendar-alt"></i> Bulan ini: <?= rpAdmin($danaBulanIni) ?>
         </div>
       </div>
 
-      <div class="stat-card">
+      <div class="stat-card" style="cursor:pointer;" onclick="location.href='<?= ($verifProgram > 0) ? "kelola_program.php?status=menunggu" : "verifikasi_donasi.php" ?>'" title="Klik untuk membuka verifikasi">
         <div class="stat-icon">
           <i class="fas fa-clock"></i>
         </div>
         <div class="stat-label">Menunggu Verifikasi</div>
         <div class="stat-value"><?= $menungguVerif ?></div>
-        <div class="stat-change info">
-          <i class="fas fa-arrow-up"></i> perlu dicek
-        </div>
+        <?php if ($menungguVerif > 0): ?>
+          <div class="stat-change info">
+            <i class="fas fa-exclamation-circle"></i> <?= $verifProgram ?> Program &bull; <?= $verifPembayaran ?> Donasi &bull; <?= $verifUser ?> Akun
+          </div>
+        <?php else: ?>
+          <div class="stat-change up">
+            <i class="fas fa-check-circle"></i> Semua telah diverifikasi
+          </div>
+        <?php endif; ?>
       </div>
 
     </div>
@@ -807,55 +920,37 @@ ul{list-style:none}
       <div class="panel">
         <div class="panel-header">
           <h2>Donasi Terbaru</h2>
-          <a href="#" class="view-all">
+          <a href="verifikasi_donasi.php" class="view-all">
             Lihat Semua <i class="fas fa-arrow-right"></i>
           </a>
         </div>
         <div class="donasi-list">
           <?php if (empty($donasiTerbaru)): ?>
-            <!-- Dummy data when no real data -->
-            <div class="donasi-item">
-              <div class="donasi-icon blue">
-                <i class="fas fa-graduation-cap"></i>
+            <div class="empty-donasi-box">
+              <div class="empty-icon-wrap">
+                <i class="fas fa-hand-holding-heart"></i>
               </div>
-              <div class="donasi-info">
-                <div class="program-name">Bantuan Pendidikan Anak Desa</div>
-                <div class="amount">Rp 500.000</div>
-                <div class="date">30 Sep 2025 10:24</div>
-              </div>
-              <span class="donasi-status menunggu">Menunggu</span>
-            </div>
-            <div class="donasi-item">
-              <div class="donasi-icon green">
-                <i class="fas fa-mosque"></i>
-              </div>
-              <div class="donasi-info">
-                <div class="program-name">Pembangunan Mushola</div>
-                <div class="amount">Rp 1.000.000</div>
-                <div class="date">29 Sep 2025 16:12</div>
-              </div>
-              <span class="donasi-status diterima">Diterima</span>
-            </div>
-            <div class="donasi-item">
-              <div class="donasi-icon orange">
-                <i class="fas fa-globe-asia"></i>
-              </div>
-              <div class="donasi-info">
-                <div class="program-name">Bantuan Korban Bencana</div>
-                <div class="amount">Rp 750.000</div>
-                <div class="date">28 Sep 2025 09:45</div>
-              </div>
-              <span class="donasi-status diterima">Diterima</span>
+              <h4>Belum Ada Transaksi Donasi</h4>
+              <p>Transaksi donasi yang masuk dari donatur akan otomatis muncul di sini secara real-time.</p>
             </div>
           <?php else: ?>
             <?php
-            $icons = ['fas fa-graduation-cap', 'fas fa-mosque', 'fas fa-globe-asia', 'fas fa-heart', 'fas fa-hand-holding-heart'];
-            $colors = ['blue', 'green', 'orange', 'purple', 'blue'];
-            foreach ($donasiTerbaru as $i => $d):
-              $iconClass = $icons[$i % count($icons)];
-              $colorClass = $colors[$i % count($colors)];
-              $status = $d['status'] ?? 'menunggu';
-              $statusLabel = ucfirst($status);
+            foreach ($donasiTerbaru as $d):
+              $stInfo = formatStatusDonasi($d['status'] ?? 'menunggu');
+              $kat = strtolower($d['kategori_program'] ?? '');
+              if (strpos($kat, 'pendidikan') !== false) {
+                  $iconClass = 'fas fa-graduation-cap';
+                  $colorClass = 'blue';
+              } elseif (strpos($kat, 'keagamaan') !== false || strpos($kat, 'mushola') !== false) {
+                  $iconClass = 'fas fa-mosque';
+                  $colorClass = 'green';
+              } elseif (strpos($kat, 'kesehatan') !== false) {
+                  $iconClass = 'fas fa-heartbeat';
+                  $colorClass = 'purple';
+              } else {
+                  $iconClass = 'fas fa-hands-helping';
+                  $colorClass = 'orange';
+              }
               $tanggal = date('d M Y H:i', strtotime($d['created_at']));
             ?>
             <div class="donasi-item">
@@ -864,10 +959,10 @@ ul{list-style:none}
               </div>
               <div class="donasi-info">
                 <div class="program-name"><?= htmlspecialchars($d['nama_program'] ?? 'Program Donasi', ENT_QUOTES, 'UTF-8') ?></div>
-                <div class="amount"><?= rpAdmin($d['jumlah'] ?? 0) ?></div>
+                <div class="amount"><?= rpAdmin($d['jumlah'] ?? 0) ?> &bull; <small style="color:#64748b"><?= htmlspecialchars($d['nama_donatur'] ?? 'Hamba Allah', ENT_QUOTES, 'UTF-8') ?></small></div>
                 <div class="date"><?= $tanggal ?></div>
               </div>
-              <span class="donasi-status <?= $status ?>"><?= $statusLabel ?></span>
+              <span class="donasi-status <?= $stInfo['class'] ?>"><?= $stInfo['label'] ?></span>
             </div>
             <?php endforeach; ?>
           <?php endif; ?>

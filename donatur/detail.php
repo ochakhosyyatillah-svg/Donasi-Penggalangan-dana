@@ -1,10 +1,22 @@
 <?php
-require_once '../includes/data.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 1;
+require_once __DIR__ . '/../assets/config/database.php';
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : (isset($_SESSION['detail_program_id']) ? (int)$_SESSION['detail_program_id'] : 1);
+if (isset($_GET['id'])) {
+    $_SESSION['detail_program_id'] = $id;
+}
+
 $prog = null;
 foreach ($programs as $p) {
     if ($p['id'] === $id) { $prog = $p; break; }
+}
+
+if (!$prog && !empty($programs)) {
+    $prog = $programs[0];
 }
 
 if (!$prog) {
@@ -107,5 +119,12 @@ require_once '../includes/header.php';
         
     </div>
 </div>
+
+<script>
+    // Menghapus ?id=... dari address bar browser agar URL tampil bersih: http://localhost/Donasi/donatur/detail.php
+    if (window.location.search) {
+        window.history.replaceState(null, '', window.location.pathname);
+    }
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

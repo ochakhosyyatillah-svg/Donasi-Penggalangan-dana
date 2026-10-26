@@ -3,7 +3,7 @@ $page_title   = 'Program Donasi - SIBERASA';
 $page_desc    = 'Temukan dan dukung program donasi pilihan di SIBERASA. Pendidikan, Sosial, Kemanusiaan, Kesehatan, dan lainnya.';
 $current_page = 'program';
 
-require_once '../includes/data.php';
+require_once __DIR__ . '/../assets/config/database.php';
 require_once '../includes/header.php';
 ?>
 
