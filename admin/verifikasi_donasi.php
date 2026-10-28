@@ -1095,17 +1095,17 @@ ul { list-style: none; }
                 <!-- Aksi -->
                 <td class="actions-cell">
                   <?php if ($row['status_verifikasi'] === 'menunggu'): ?>
-                    <form method="POST" action="verifikasi_donasi.php?tab=<?= $tab ?>" style="display:inline;" onsubmit="return confirm('Verifikasi donasi sebesar <?= rp($row['nominal']) ?> dari <?= htmlspecialchars($row['nama_donatur']) ?>?')">
-                      <input type="hidden" name="aksi" value="verifikasi">
-                      <input type="hidden" name="id_pembayaran" value="<?= $row['id_pembayaran'] ?>">
-                      <input type="hidden" name="id_donasi" value="<?= $row['id_donasi'] ?>">
-                      <button type="submit" class="btn-action-verif">Verifikasi</button>
-                    </form>
+                    <button 
+                      type="button" 
+                      class="btn-action-verif"
+                      onclick="openVerifModal(<?= $row['id_pembayaran'] ?>, <?= $row['id_donasi'] ?>, '<?= htmlspecialchars(addslashes($row['nama_donatur'])) ?>', '<?= rp($row['nominal']) ?>', '<?= htmlspecialchars(addslashes($row['nama_program'])) ?>')">
+                      Verifikasi
+                    </button>
 
                     <button 
                       type="button" 
                       class="btn-action-tolak"
-                      onclick="openRejectModal(<?= $row['id_pembayaran'] ?>, <?= $row['id_donasi'] ?>, '<?= htmlspecialchars(addslashes($row['nama_donatur'])) ?>')">
+                      onclick="openRejectModal(<?= $row['id_pembayaran'] ?>, <?= $row['id_donasi'] ?>, '<?= htmlspecialchars(addslashes($row['nama_donatur'])) ?>', '<?= rp($row['nominal']) ?>', '<?= htmlspecialchars(addslashes($row['nama_program'])) ?>')">
                       Tolak
                     </button>
 
@@ -1174,12 +1174,84 @@ ul { list-style: none; }
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════
+     MODAL KONFIRMASI VERIFIKASI DONASI
+════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="confirmVerifModal" onclick="closeOnOutside(event, 'confirmVerifModal')">
+  <div class="modal-card" style="max-width: 480px;">
+    <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 18px 24px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:40px; height:40px; border-radius:50%; background:#ecfdf5; display:flex; align-items:center; justify-content:center; color:#10b981; font-size:1.25rem;">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div>
+          <h3 style="font-size:1.1rem; color:#0f4c75; margin:0;">Konfirmasi Verifikasi Donasi</h3>
+          <p style="font-size:0.78rem; color:#64748b; margin:2px 0 0 0;">Periksa dan setujui transaksi pembayaran donatur</p>
+        </div>
+      </div>
+      <button class="modal-close-btn" onclick="closeModal('confirmVerifModal')">&times;</button>
+    </div>
+
+    <form method="POST" action="verifikasi_donasi.php?tab=<?= $tab ?>">
+      <input type="hidden" name="aksi" value="verifikasi">
+      <input type="hidden" name="id_pembayaran" id="verifIdPembayaran" value="">
+      <input type="hidden" name="id_donasi" id="verifIdDonasi" value="">
+
+      <div class="modal-body" style="padding: 22px 24px;">
+        <p style="font-size:0.9rem; color:#334155; margin-bottom:16px; line-height:1.5;">
+          Apakah Anda yakin ingin memverifikasi dan menyetujui transaksi donasi berikut?
+        </p>
+
+        <!-- Detail Box -->
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px dashed #e2e8f0;">
+            <span style="font-size:0.82rem; color:#64748b;">Nama Donatur</span>
+            <strong id="verifDonorName" style="font-size:0.92rem; color:#0f172a;">-</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px dashed #e2e8f0;">
+            <span style="font-size:0.82rem; color:#64748b;">Nominal Donasi</span>
+            <strong id="verifNominal" style="font-size:1.05rem; color:#059669; font-weight:700;">-</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <span style="font-size:0.82rem; color:#64748b;">Program Donasi</span>
+            <span id="verifProgramName" style="font-size:0.85rem; color:#334155; font-weight:600; text-align:right; max-width:62%;">-</span>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:flex-start; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 14px;">
+          <i class="fas fa-info-circle" style="color:#16a34a; font-size:1rem; margin-top:2px;"></i>
+          <p style="font-size:0.8rem; color:#166534; margin:0; line-height:1.45;">
+            Setelah diverifikasi, donasi akan berstatus <strong>Terverifikasi & Selesai</strong> dan tercatat ke total perolehan program.
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding:16px 24px; background:#f8fafc; border-top:1px solid #f1f5f9;">
+        <button type="button" class="btn-outline-lihat" style="border-color:#cbd5e1; color:#64748b; padding:9px 18px;" onclick="closeModal('confirmVerifModal')">
+          Batal
+        </button>
+        <button type="submit" class="btn-action-verif" style="background:#059669; border-color:#059669; width:auto; padding:9px 24px; margin:0; display:inline-flex; align-items:center; gap:8px;">
+          <i class="fas fa-check"></i> Ya, Verifikasi Donasi
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
      MODAL TOLAK DONASI
 ════════════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="rejectModal" onclick="closeOnOutside(event, 'rejectModal')">
-  <div class="modal-card" style="max-width:460px;">
-    <div class="modal-header">
-      <h3 style="color:#dc2626;"><i class="fas fa-exclamation-triangle"></i> Tolak Donasi</h3>
+  <div class="modal-card" style="max-width:480px;">
+    <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 18px 24px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:40px; height:40px; border-radius:50%; background:#fee2e2; display:flex; align-items:center; justify-content:center; color:#dc2626; font-size:1.2rem;">
+          <i class="fas fa-times-circle"></i>
+        </div>
+        <div>
+          <h3 style="font-size:1.1rem; color:#dc2626; margin:0;">Tolak Pembayaran Donasi</h3>
+          <p style="font-size:0.78rem; color:#64748b; margin:2px 0 0 0;">Berikan alasan penolakan bukti donasi</p>
+        </div>
+      </div>
       <button class="modal-close-btn" onclick="closeModal('rejectModal')">&times;</button>
     </div>
 
@@ -1188,12 +1260,20 @@ ul { list-style: none; }
       <input type="hidden" name="id_pembayaran" id="rejIdPembayaran" value="">
       <input type="hidden" name="id_donasi" id="rejIdDonasi" value="">
 
-      <div class="modal-body">
-        <p style="font-size:0.9rem;color:#334155;margin-bottom:14px;">
-          Anda akan menolak donasi dari <strong id="rejDonorName">-</strong>. Masukkan alasan penolakan:
-        </p>
+      <div class="modal-body" style="padding: 22px 24px;">
+        <!-- Detail Box -->
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px; margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:0.82rem; color:#64748b;">Nama Donatur</span>
+            <strong id="rejDonorName" style="font-size:0.9rem; color:#0f172a;">-</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:0.82rem; color:#64748b;">Nominal Donasi</span>
+            <strong id="rejNominal" style="font-size:0.95rem; color:#dc2626; font-weight:700;">-</strong>
+          </div>
+        </div>
 
-        <label for="catatanAdmin" style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:6px;color:#475569;">
+        <label for="catatanAdmin" style="display:block;font-size:0.84rem;font-weight:600;margin-bottom:6px;color:#334155;">
           Alasan Penolakan <span style="color:#ef4444;">*</span>
         </label>
         <textarea 
@@ -1204,9 +1284,11 @@ ul { list-style: none; }
           required></textarea>
       </div>
 
-      <div class="modal-footer">
-        <button type="button" class="btn-outline-lihat" style="border-color:#cbd5e1;color:#64748b;" onclick="closeModal('rejectModal')">Batal</button>
-        <button type="submit" class="btn-action-verif" style="background:#ef4444;width:auto;padding:8px 22px;margin:0;">Tolak Donasi</button>
+      <div class="modal-footer" style="padding:16px 24px; background:#f8fafc; border-top:1px solid #f1f5f9;">
+        <button type="button" class="btn-outline-lihat" style="border-color:#cbd5e1;color:#64748b; padding:9px 18px;" onclick="closeModal('rejectModal')">Batal</button>
+        <button type="submit" class="btn-action-verif" style="background:#dc2626;border-color:#dc2626;width:auto;padding:9px 24px;margin:0; display:inline-flex; align-items:center; gap:8px;">
+          <i class="fas fa-times"></i> Tolak Donasi
+        </button>
       </div>
     </form>
   </div>
@@ -1238,27 +1320,32 @@ function openProofModal(data) {
 
   if (data.status === 'menunggu') {
     btnContainer.innerHTML = `
-      <button type="button" class="btn-action-tolak" style="width:auto;padding:8px 18px;margin-bottom:0;" onclick="closeModal('proofModal'); openRejectModal(${data.id_pembayaran}, ${data.id_donasi}, '${data.nama}')">
+      <button type="button" class="btn-action-tolak" style="width:auto;padding:8px 18px;margin-bottom:0;" onclick="closeModal('proofModal'); openRejectModal(${data.id_pembayaran}, ${data.id_donasi}, '${data.nama}', '${data.nominal}', '${data.program}')">
         Tolak Donasi
       </button>
-      <form method="POST" action="verifikasi_donasi.php?tab=<?= $tab ?>" style="display:inline;" onsubmit="return confirm('Verifikasi donasi ini?')">
-        <input type="hidden" name="aksi" value="verifikasi">
-        <input type="hidden" name="id_pembayaran" value="${data.id_pembayaran}">
-        <input type="hidden" name="id_donasi" value="${data.id_donasi}">
-        <button type="submit" class="btn-action-verif" style="width:auto;padding:8px 22px;margin-bottom:0;">
-          Verifikasi Sekarang
-        </button>
-      </form>
+      <button type="button" class="btn-action-verif" style="width:auto;padding:8px 22px;margin-bottom:0;background:#059669;border-color:#059669;display:inline-flex;align-items:center;gap:6px;" onclick="closeModal('proofModal'); openVerifModal(${data.id_pembayaran}, ${data.id_donasi}, '${data.nama}', '${data.nominal}', '${data.program}')">
+        <i class="fas fa-check"></i> Verifikasi Sekarang
+      </button>
     `;
   }
 
   openModal('proofModal');
 }
 
-function openRejectModal(idPembayaran, idDonasi, namaDonatur) {
+function openVerifModal(idPembayaran, idDonasi, namaDonatur, nominal, namaProgram) {
+  document.getElementById('verifIdPembayaran').value = idPembayaran;
+  document.getElementById('verifIdDonasi').value = idDonasi;
+  document.getElementById('verifDonorName').textContent = namaDonatur;
+  document.getElementById('verifNominal').textContent = nominal;
+  document.getElementById('verifProgramName').textContent = namaProgram || '-';
+  openModal('confirmVerifModal');
+}
+
+function openRejectModal(idPembayaran, idDonasi, namaDonatur, nominal, namaProgram) {
   document.getElementById('rejIdPembayaran').value = idPembayaran;
   document.getElementById('rejIdDonasi').value = idDonasi;
   document.getElementById('rejDonorName').textContent = namaDonatur;
+  if (document.getElementById('rejNominal')) document.getElementById('rejNominal').textContent = nominal || '-';
   document.getElementById('catatanAdmin').value = '';
   openModal('rejectModal');
 }

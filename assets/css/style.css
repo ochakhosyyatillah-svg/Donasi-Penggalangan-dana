@@ -92,12 +92,33 @@ ul { list-style: none; }
   transform: scale(1.04);
 }
 
-.nav-logo span {
+.nav-logo .logo-uin {
+  height: 48px;
+  width: auto;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.10));
+}
+
+.nav-logo .logo-siberasa {
+  height: 44px;
+  width: auto;
+}
+
+.logo-divider {
+  display: inline-block;
+  width: 1.5px;
+  height: 38px;
+  background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.20), transparent);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.nav-logo span:not(.logo-divider) {
   font-size: 1.3rem;
   font-weight: 800;
   color: var(--primary);
   letter-spacing: -0.5px;
 }
+
 
 .nav-links {
   display: flex;

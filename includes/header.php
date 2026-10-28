@@ -34,7 +34,9 @@ $page_desc = $page_desc ?? 'SIBERASA adalah platform donasi online terpercaya. B
 <nav class="navbar" id="navbar">
     <div class="nav-container">
         <a href="/Donasi/" class="nav-logo">
-            <img src="/logo%20donasi.png" alt="SIBERASA Logo" onerror="this.src='/Donasi/assets/img/logo_donasi.png'">
+            <img src="/Donasi/assets/img/logo_uin.jpg" alt="Logo UIN Siber Syekh Nurjati Cirebon" class="logo-uin">
+            <span class="logo-divider"></span>
+            <img src="/logo%20donasi.png" alt="SIBERASA Logo" onerror="this.src='/Donasi/assets/img/logo_donasi.png'" class="logo-siberasa">
         </a>
 
         <ul class="nav-links" id="navLinks">

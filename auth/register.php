@@ -3,6 +3,7 @@ require_once __DIR__ . '/../assets/config/database.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nama = trim($_POST['name'] ?? '');
+    $nama_org = trim($_POST['nama_organisasi'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $no_hp = trim($_POST['phone'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -18,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (
         $nama === '' ||
+        $nama_org === '' ||
         !filter_var($email, FILTER_VALIDATE_EMAIL) ||
         $no_hp === '' ||
         strlen($password) < 8 ||
@@ -64,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     nama_organisasi,
                     role,
                     status_verifikasi
-                ) VALUES (?, ?, ?, ?, ?, NULL, 'pengusul', 'menunggu')";
+                ) VALUES (?, ?, ?, ?, ?, ?, 'pengusul', 'menunggu')";
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
@@ -72,7 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $email,
             $hashPassword,
             $no_hp,
-            $jenis
+            $jenis,
+            $nama_org
         ]);
 
         echo "<script>
@@ -345,7 +348,7 @@ body::before{
 
 <div class="register-wrap">
   <!-- Link Kembali ke Beranda -->
-  <a href="/Donasi/donatur/index.php" class="back-home">
+  <a href="/Donasi/" class="back-home">
     <i class="fas fa-arrow-left"></i> Kembali ke Beranda
   </a>
 
@@ -383,6 +386,12 @@ body::before{
       <div class="form-group">
         <label for="name">Nama Lengkap <span class="req">*</span></label>
         <input type="text" id="name" name="name" placeholder="Masukkan Nama Lengkap" required>
+      </div>
+
+      <!-- Nama Organisasi -->
+      <div class="form-group">
+        <label for="nama_organisasi">Nama Organisasi <span class="req">*</span></label>
+        <input type="text" id="nama_organisasi" name="nama_organisasi" placeholder="Contoh: BEM Fakultas Teknik" required>
       </div>
 
       <!-- Email -->

@@ -28,10 +28,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($aksi === 'hapus') {
         $id = (int)($_POST['id_program'] ?? 0);
         if ($id > 0) {
-            $stmt = $pdo->prepare("DELETE FROM program_donasi WHERE id_program = ?");
-            $stmt->execute([$id]);
-            $alertMsg  = 'Program berhasil dihapus.';
-            $alertType = 'success';
+            try {
+                $pdo->beginTransaction();
+
+                // Hapus turunan program
+                $pdo->prepare("DELETE FROM laporan_penggalangan WHERE id_program = ?")->execute([$id]);
+                $pdo->prepare("DELETE FROM penyaluran_dana WHERE id_program = ?")->execute([$id]);
+                $pdo->prepare("DELETE FROM akun_tujuan_pembayaran WHERE id_program = ?")->execute([$id]);
+
+                // Hapus pembayaran & verifikasi terkait donasi pada program ini
+                $stmtDon = $pdo->prepare("SELECT id_donasi FROM donasi WHERE id_program = ?");
+                $stmtDon->execute([$id]);
+                $donIds = $stmtDon->fetchAll(PDO::FETCH_COLUMN);
+                foreach ($donIds as $did) {
+                    $stmtPay = $pdo->prepare("SELECT id_pembayaran FROM pembayaran WHERE id_donasi = ?");
+                    $stmtPay->execute([$did]);
+                    $payIds = $stmtPay->fetchAll(PDO::FETCH_COLUMN);
+                    foreach ($payIds as $payid) {
+                        $pdo->prepare("DELETE FROM verifikasi WHERE id_pembayaran = ?")->execute([$payid]);
+                    }
+                    $pdo->prepare("DELETE FROM pembayaran WHERE id_donasi = ?")->execute([$did]);
+                }
+                $pdo->prepare("DELETE FROM donasi WHERE id_program = ?")->execute([$id]);
+                $pdo->prepare("DELETE FROM verifikasi WHERE id_program = ?")->execute([$id]);
+
+                // Hapus program
+                $pdo->prepare("DELETE FROM program_donasi WHERE id_program = ?")->execute([$id]);
+
+                $pdo->commit();
+                $alertMsg  = 'Program berhasil dihapus.';
+                $alertType = 'success';
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                error_log('Hapus program error: ' . $e->getMessage());
+                $alertMsg  = 'Gagal menghapus program: ' . $e->getMessage();
+                $alertType = 'error';
+            }
         }
     }
 
@@ -926,7 +958,6 @@ textarea.form-control{resize:vertical;min-height:90px}
         <div class="form-group">
           <label>Status</label>
           <select name="status_program" class="form-control">
-            <option value="menunggu">Dalam Proses</option>
             <option value="disetujui" selected>Disetujui</option>
             <option value="ditolak">Ditolak</option>
             <option value="selesai">Selesai</option>
@@ -994,7 +1025,6 @@ textarea.form-control{resize:vertical;min-height:90px}
       <div class="form-group">
         <label>Status</label>
         <select name="status_program" id="edit_status" class="form-control">
-          <option value="menunggu">Dalam Proses</option>
           <option value="disetujui">Disetujui</option>
           <option value="ditolak">Ditolak</option>
           <option value="selesai">Selesai</option>

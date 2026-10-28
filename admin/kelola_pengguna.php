@@ -29,9 +29,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($aksi === 'hapus') {
         $id = (int)($_POST['id_user'] ?? 0);
         if ($id > 0 && $id !== (int)$_SESSION['id_user']) {
-            $pdo->prepare("DELETE FROM users WHERE id_user = ?")->execute([$id]);
-            $alertMsg  = 'Pengguna berhasil dihapus.';
-            $alertType = 'success';
+            try {
+                $pdo->beginTransaction();
+
+                // Hapus data terkait di tabel verifikasi (verifikasi user & admin)
+                $pdo->prepare("DELETE FROM verifikasi WHERE id_user_diperiksa = ? OR id_admin = ?")->execute([$id, $id]);
+
+                // Ambil id_program yang dimiliki user ini
+                $stmtProg = $pdo->prepare("SELECT id_program FROM program_donasi WHERE id_pengusul = ?");
+                $stmtProg->execute([$id]);
+                $progIds = $stmtProg->fetchAll(PDO::FETCH_COLUMN);
+
+                foreach ($progIds as $pid) {
+                    // Hapus turunan program
+                    $pdo->prepare("DELETE FROM laporan_penggalangan WHERE id_program = ?")->execute([$pid]);
+                    $pdo->prepare("DELETE FROM penyaluran_dana WHERE id_program = ?")->execute([$pid]);
+                    $pdo->prepare("DELETE FROM akun_tujuan_pembayaran WHERE id_program = ?")->execute([$pid]);
+                    // Hapus pembayaran & verifikasi terkait donasi
+                    $stmtDon = $pdo->prepare("SELECT id_donasi FROM donasi WHERE id_program = ?");
+                    $stmtDon->execute([$pid]);
+                    $donIds = $stmtDon->fetchAll(PDO::FETCH_COLUMN);
+                    foreach ($donIds as $did) {
+                        $stmtPay = $pdo->prepare("SELECT id_pembayaran FROM pembayaran WHERE id_donasi = ?");
+                        $stmtPay->execute([$did]);
+                        $payIds = $stmtPay->fetchAll(PDO::FETCH_COLUMN);
+                        foreach ($payIds as $payid) {
+                            $pdo->prepare("DELETE FROM verifikasi WHERE id_pembayaran = ?")->execute([$payid]);
+                        }
+                        $pdo->prepare("DELETE FROM pembayaran WHERE id_donasi = ?")->execute([$did]);
+                    }
+                    $pdo->prepare("DELETE FROM donasi WHERE id_program = ?")->execute([$pid]);
+                    $pdo->prepare("DELETE FROM verifikasi WHERE id_program = ?")->execute([$pid]);
+                    $pdo->prepare("UPDATE program_donasi SET diversifikasi_oleh = NULL WHERE id_program = ?")->execute([$pid]);
+                    $pdo->prepare("DELETE FROM program_donasi WHERE id_program = ?")->execute([$pid]);
+                }
+
+                // Hapus pembayaran yang diverifikasi oleh user ini
+                $pdo->prepare("UPDATE pembayaran SET diversifikasi_oleh = NULL WHERE diversifikasi_oleh = ?")->execute([$id]);
+
+                // Hapus user
+                $pdo->prepare("DELETE FROM users WHERE id_user = ?")->execute([$id]);
+
+                $pdo->commit();
+                $alertMsg  = 'Pengguna berhasil dihapus.';
+                $alertType = 'success';
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                error_log('Hapus user error: ' . $e->getMessage());
+                $alertMsg  = 'Gagal menghapus pengguna: ' . $e->getMessage();
+                $alertType = 'error';
+            }
         } else {
             $alertMsg  = 'Tidak dapat menghapus akun sendiri.';
             $alertType = 'error';

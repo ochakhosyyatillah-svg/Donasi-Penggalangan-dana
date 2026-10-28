@@ -1,12 +1,214 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once __DIR__ . '/../assets/config/database.php';
 
-// Parameter URL atau default ke program #3 (Bantuan Korban Banjir) persis seperti di desain
-$id      = isset($_GET['id']) ? (int)$_GET['id'] : 3;
-$nominal = isset($_GET['nominal']) ? (int)$_GET['nominal'] : 100000;
-$metode  = isset($_GET['metode']) ? htmlspecialchars($_GET['metode']) : 'Bank Transfer';
+// Handle AJAX / Form Submit Pengunggahan Bukti Pembayaran
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['action']) && $_POST['action'] === 'upload_bukti' || isset($_FILES['bukti']))) {
+    header('Content-Type: application/json');
 
-// Cari program yang cocok
+    try {
+        if (!isset($_FILES['bukti']) || $_FILES['bukti']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Silakan pilih berkas bukti pembayaran terlebih dahulu.'
+            ]);
+            exit;
+        }
+
+        $file = $_FILES['bukti'];
+        $maxSize = 5 * 1024 * 1024; // 5 MB
+        if ($file['size'] > $maxSize) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Ukuran file terlalu besar! Maksimal 5 MB.'
+            ]);
+            exit;
+        }
+
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowedExt = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+        if (!in_array($ext, $allowedExt)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Format file tidak didukung! Gunakan format JPG, PNG, atau PDF.'
+            ]);
+            exit;
+        }
+
+        $uploadDir = __DIR__ . '/../assets/img/';
+        if (!is_dir($uploadDir)) {
+            @mkdir($uploadDir, 0777, true);
+        }
+
+        $newFileName = 'bukti_' . date('YmdHis') . '_' . uniqid() . '.' . $ext;
+        $destination = $uploadDir . $newFileName;
+
+        if (!move_uploaded_file($file['tmp_name'], $destination)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Gagal menyimpan file bukti pembayaran ke server.'
+            ]);
+            exit;
+        }
+
+        // Ambil data donasi
+        $postNominal   = isset($_POST['nominal']) ? (int)$_POST['nominal'] : (int)($_SESSION['pembayaran_data']['nominal'] ?? 100000);
+        $postProgramId = isset($_POST['id_program']) ? (int)$_POST['id_program'] : (int)($_SESSION['pembayaran_data']['id'] ?? 10);
+        $postMetode    = isset($_POST['metode']) ? trim($_POST['metode']) : ($_SESSION['pembayaran_data']['metode'] ?? 'QRIS');
+        $catatanDonatur = trim($_POST['catatan'] ?? '');
+
+        // Validasi program ID di database
+        $stmtCek = $pdo->prepare("SELECT id_program FROM program_donasi WHERE id_program = ?");
+        $stmtCek->execute([$postProgramId]);
+        if (!$stmtCek->fetchColumn()) {
+            $firstId = $pdo->query("SELECT id_program FROM program_donasi ORDER BY id_program ASC LIMIT 1")->fetchColumn();
+            if ($firstId) {
+                $postProgramId = (int)$firstId;
+            }
+        }
+
+        // Data Donatur
+        $namaDonatur = trim($_SESSION['pembayaran_data']['nama'] ?? ($_SESSION['nama'] ?? 'Donatur SIBERASA'));
+        if (empty($namaDonatur)) $namaDonatur = 'Donatur SIBERASA';
+        $emailDonatur = trim($_SESSION['pembayaran_data']['email'] ?? ($_SESSION['email'] ?? ''));
+        $teleponDonatur = trim($_SESSION['pembayaran_data']['telepon'] ?? '');
+
+        if (empty($catatanDonatur) && !empty($_SESSION['pembayaran_data']['pesan'])) {
+            $catatanDonatur = $_SESSION['pembayaran_data']['pesan'];
+        }
+
+        // Normalisasi metode pembayaran ke enum DB: 'bank', 'qris', 'e-wallet'
+        $metodeLower = strtolower($postMetode);
+        if (strpos($metodeLower, 'bank') !== false || strpos($metodeLower, 'transfer') !== false) {
+            $metodeDb = 'bank';
+        } elseif (strpos($metodeLower, 'wallet') !== false || strpos($metodeLower, 'ewallet') !== false) {
+            $metodeDb = 'e-wallet';
+        } else {
+            $metodeDb = 'qris';
+        }
+
+        // Cari akun tujuan pembayaran yang sesuai
+        $stmtAkun = $pdo->prepare("SELECT id_akun FROM akun_tujuan_pembayaran WHERE id_program = ? AND metode = ? LIMIT 1");
+        $stmtAkun->execute([$postProgramId, $metodeDb]);
+        $idAkun = $stmtAkun->fetchColumn();
+
+        if (!$idAkun) {
+            $stmtAkunProg = $pdo->prepare("SELECT id_akun FROM akun_tujuan_pembayaran WHERE id_program = ? LIMIT 1");
+            $stmtAkunProg->execute([$postProgramId]);
+            $idAkun = $stmtAkunProg->fetchColumn();
+        }
+
+        if (!$idAkun) {
+            $idAkun = $pdo->query("SELECT id_akun FROM akun_tujuan_pembayaran LIMIT 1")->fetchColumn();
+        }
+
+        if (!$idAkun) {
+            $insAkun = $pdo->prepare("INSERT INTO akun_tujuan_pembayaran (id_program, metode, nama_penyedia, nama_pemilik, nomor_tujuan, status_aktif) VALUES (?, ?, 'SIBERASA Rekening', 'Yayasan SIBERASA', '1234567890', 1)");
+            $insAkun->execute([$postProgramId, $metodeDb]);
+            $idAkun = (int)$pdo->lastInsertId();
+        }
+
+        // Generate Kode Tracking Unik
+        $kodeTracking = 'DON' . date('YmdHis') . rand(10, 99);
+
+        $pdo->beginTransaction();
+
+        // 1. Simpan ke tabel donasi
+        $stmtDonasi = $pdo->prepare("
+            INSERT INTO donasi (kode_tracking, id_program, nama_donatur, email_donatur, no_hp_donatur, nominal, pesan_donatur, status_donasi, tanggal_donasi)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'menunggu_verifikasi', NOW())
+        ");
+        $stmtDonasi->execute([
+            $kodeTracking,
+            $postProgramId,
+            $namaDonatur,
+            $emailDonatur,
+            $teleponDonatur,
+            $postNominal,
+            $catatanDonatur
+        ]);
+        $idDonasi = (int)$pdo->lastInsertId();
+
+        // 2. Simpan ke tabel pembayaran
+        $stmtPembayaran = $pdo->prepare("
+            INSERT INTO pembayaran (id_donasi, id_akun, metode_pembayaran, tanggal_pembayaran, bukti_pembayaran, status_verifikasi, catatan_admin)
+            VALUES (?, ?, ?, NOW(), ?, 'menunggu', NULL)
+        ");
+        $stmtPembayaran->execute([
+            $idDonasi,
+            $idAkun,
+            $metodeDb,
+            $newFileName
+        ]);
+
+        $pdo->commit();
+
+        // Bersihkan session data pembayaran
+        unset($_SESSION['pembayaran_data']);
+
+        echo json_encode([
+            'success' => true,
+            'kode'    => $kodeTracking,
+            'message' => 'Bukti pembayaran berhasil dikirim dan tersimpan ke sistem!'
+        ]);
+        exit;
+
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        echo json_encode([
+            'success' => false,
+            'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+        ]);
+        exit;
+    }
+}
+
+// Ambil data dari GET (jika ada) atau dari SESSION pembayaran
+if (isset($_GET['id'])) {
+    $id = (int)$_GET['id'];
+    $nominal = isset($_GET['nominal']) ? (int)$_GET['nominal'] : 100000;
+    $rawMetode = isset($_GET['metode']) ? trim($_GET['metode']) : 'QRIS';
+
+    if (stripos($rawMetode, 'transfer') !== false || stripos($rawMetode, 'bank') !== false) {
+        $metode = 'Transfer Bank';
+    } elseif (stripos($rawMetode, 'ewallet') !== false || stripos($rawMetode, 'wallet') !== false) {
+        $metode = 'E-Wallet';
+    } else {
+        $metode = 'QRIS';
+    }
+
+    if (!isset($_SESSION['pembayaran_data'])) {
+        $_SESSION['pembayaran_data'] = [];
+    }
+    $_SESSION['pembayaran_data']['id'] = $id;
+    $_SESSION['pembayaran_data']['nominal'] = $nominal;
+    $_SESSION['pembayaran_data']['metode'] = $metode;
+} elseif (isset($_SESSION['pembayaran_data'])) {
+    $data = $_SESSION['pembayaran_data'];
+    $id = (int)($data['id'] ?? 10);
+    $nominal = (int)($data['nominal'] ?? 100000);
+    $rawMetode = $data['metode'] ?? 'QRIS';
+
+    if (stripos($rawMetode, 'transfer') !== false || stripos($rawMetode, 'bank') !== false) {
+        $metode = 'Transfer Bank';
+    } elseif (stripos($rawMetode, 'ewallet') !== false || stripos($rawMetode, 'wallet') !== false) {
+        $metode = 'E-Wallet';
+    } else {
+        $metode = 'QRIS';
+    }
+} else {
+    // Default fallback
+    $id      = 10;
+    $nominal = 100000;
+    $metode  = 'QRIS';
+}
+
+// Cari program yang cocok di database
 $prog = null;
 foreach ($programs as $p) {
     if ($p['id'] === $id) {
@@ -14,18 +216,23 @@ foreach ($programs as $p) {
         break;
     }
 }
+if (!$prog && !empty($programs)) {
+    $prog = $programs[0];
+    $id = (int)$prog['id'];
+}
 if (!$prog) {
-    $prog = $programs[2]; // Default ke program banjir (id: 3)
+    $prog = [
+        'id' => $id,
+        'judul' => 'Program Donasi SIBERASA',
+        'kategori' => 'Kemanusiaan',
+        'deskripsi' => 'Program bantuan dan donasi kebaikan sesama.',
+        'gambar' => '/Donasi/assets/img/program1.jpg',
+        'target' => 50000000,
+        'terkumpul' => 25000000,
+        'persen' => 50
+    ];
 }
 
-// Ambil daftar rekening / akun pembayaran yang didaftarkan pengusul untuk program ini
-try {
-    $stmtAkun = $pdo->prepare("SELECT * FROM akun_tujuan_pembayaran WHERE id_program = ? AND status_aktif = 1");
-    $stmtAkun->execute([$prog['id']]);
-    $daftarAkun = $stmtAkun->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $daftarAkun = [];
-}
 
 $page_title   = 'Upload Bukti Pembayaran - SIBERASA';
 $page_desc    = 'Unggah bukti pembayaran donasi Anda untuk verifikasi.';
@@ -47,7 +254,7 @@ require_once '../includes/header.php';
 
         <!-- ── TOMBOL KEMBALI ── -->
         <div class="ub-back-row">
-            <a href="pembayaran.php?id=<?= $prog['id'] ?>&nominal=<?= $nominal ?>&metode=<?= urlencode($metode) ?>" class="ub-btn-back">
+            <a href="pembayaran.php" class="ub-btn-back">
                 <i class="fas fa-arrow-left"></i> Kembali ke Detail Pembayaran
             </a>
         </div>
@@ -128,81 +335,20 @@ require_once '../includes/header.php';
                     </div>
                 </div>
 
-                <!-- 3b. Rekening / Akun Tujuan Donasi (Dari Akun Pengusul) -->
-                <div class="ub-card" style="margin-bottom: 24px;">
-                    <h3 class="ub-card-title" style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                        <span><i class="fas fa-credit-card" style="color: #0284c7; margin-right: 8px;"></i>Rekening / Akun Tujuan Donasi</span>
-                        <span style="font-size: 0.75rem; font-weight: 500; color: #64748b;">Transfer ke salah satu rekening/akun di bawah</span>
-                    </h3>
-
-                    <div style="display: flex; flex-direction: column; gap: 12px;">
-                        <?php if (!empty($daftarAkun)): ?>
-                            <?php foreach ($daftarAkun as $ak): ?>
-                                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-                                    <div style="display: flex; align-items: center; gap: 12px;">
-                                        <div style="width: 42px; height: 42px; border-radius: 8px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
-                                            <?php if ($ak['metode'] === 'bank'): ?>
-                                                <i class="fas fa-building-columns"></i>
-                                            <?php elseif ($ak['metode'] === 'qris'): ?>
-                                                <i class="fas fa-qrcode"></i>
-                                            <?php else: ?>
-                                                <i class="fas fa-wallet"></i>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div>
-                                            <div style="font-weight: 700; color: #1e293b; font-size: 0.92rem;">
-                                                <?= htmlspecialchars($ak['nama_penyedia']) ?>
-                                            </div>
-                                            <div style="font-size: 0.78rem; color: #64748b;">
-                                                a.n. <?= htmlspecialchars($ak['nama_pemilik'] ?: 'Penyelenggara Program') ?>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                        <?php if (!empty($ak['nomor_tujuan'])): ?>
-                                            <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; font-weight: 700; font-family: monospace; font-size: 0.92rem; color: #0f172a;">
-                                                <?= htmlspecialchars($ak['nomor_tujuan']) ?>
-                                            </div>
-                                            <button type="button" onclick="navigator.clipboard.writeText('<?= htmlspecialchars($ak['nomor_tujuan']) ?>'); alert('Nomor rekening/akun berhasil disalin!');" style="padding: 6px 12px; background: #0284c7; color: #fff; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
-                                                <i class="far fa-copy"></i> Salin
-                                            </button>
-                                        <?php endif; ?>
-
-                                        <?php if (!empty($ak['gambar_qris'])): ?>
-                                            <a href="/Donasi/<?= htmlspecialchars($ak['gambar_qris']) ?>" target="_blank" style="padding: 6px 12px; background: #10b981; color: #fff; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
-                                                <i class="fas fa-qrcode"></i> Lihat QRIS
-                                            </a>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-                                <div>
-                                    <div style="font-weight: 700; color: #1e293b;">Bank BCA (SIBERASA Resmi)</div>
-                                    <div style="font-size: 0.78rem; color: #64748b;">a.n. Yayasan SIBERASA Peduli</div>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <div style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; font-weight: 700; font-family: monospace;">8271029384</div>
-                                    <button type="button" onclick="navigator.clipboard.writeText('8271029384'); alert('Nomor rekening berhasil disalin!');" style="padding: 6px 12px; background: #0284c7; color: #fff; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
-                                        <i class="far fa-copy"></i> Salin
-                                    </button>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
 
                 <!-- 4. Form Unggah Bukti Pembayaran -->
                 <div class="ub-card ub-upload-card">
                     <h3 class="ub-card-title">Unggah Bukti Pembayaran</h3>
 
-                    <form id="formUploadBukti" onsubmit="handleFormSubmit(event)">
+                    <form id="formUploadBukti" enctype="multipart/form-data" onsubmit="handleFormSubmit(event)">
+                        <input type="hidden" name="action" value="upload_bukti">
+                        <input type="hidden" name="id_program" value="<?= (int)$prog['id'] ?>">
+                        <input type="hidden" name="nominal" value="<?= (int)$nominal ?>">
+                        <input type="hidden" name="metode" value="<?= htmlspecialchars($metode) ?>">
                         
                         <!-- Drag & Drop Upload Zone -->
                         <div class="ub-dropzone" id="dropZone" onclick="triggerFileInput()">
-                            <input type="file" id="fileInput" accept="image/jpeg,image/png,image/jpg,application/pdf" style="display:none;" onchange="handleFileChange(this)">
+                            <input type="file" id="fileInput" name="bukti" accept="image/jpeg,image/png,image/jpg,image/webp,application/pdf" style="display:none;" onchange="handleFileChange(this)">
                             
                             <div class="ub-drop-icon">
                                 <i class="fas fa-cloud-arrow-up"></i>
@@ -214,14 +360,14 @@ require_once '../includes/header.php';
                         </div>
 
                         <!-- File Preview Card Item -->
-                        <div class="ub-file-preview-card" id="filePreviewCard">
+                        <div class="ub-file-preview-card" id="filePreviewCard" style="display:none;">
                             <div class="ub-preview-thumb">
                                 <i class="fas fa-file-invoice" id="previewIcon"></i>
                                 <img src="" alt="Bukti Transfer" id="previewImage" style="display:none;">
                             </div>
                             <div class="ub-preview-details">
-                                <strong class="ub-file-name" id="fileName">bukti-transfer.jpg</strong>
-                                <span class="ub-file-size" id="fileSize">2.4 MB</span>
+                                <strong class="ub-file-name" id="fileName">Belum ada file dipilih</strong>
+                                <span class="ub-file-size" id="fileSize">0 MB</span>
                             </div>
                             <button type="button" class="ub-btn-remove-file" onclick="removeSelectedFile()" aria-label="Hapus file">
                                 <i class="fas fa-times"></i>
@@ -231,14 +377,20 @@ require_once '../includes/header.php';
                         <!-- Catatan Opsional -->
                         <div class="ub-form-group">
                             <label for="inputCatatan" class="ub-label">Catatan (Opsional)</label>
-                            <textarea id="inputCatatan" class="ub-textarea" rows="3" maxlength="200" placeholder="Contoh: Terima kasih sudah membantu..." oninput="updateCharCounter(this)"></textarea>
+                            <textarea id="inputCatatan" name="catatan" class="ub-textarea" rows="3" maxlength="200" placeholder="Contoh: Terima kasih sudah membantu..." oninput="updateCharCounter(this)"></textarea>
                             <div class="ub-counter-wrap">
                                 <span id="charCounter">0/200</span>
                             </div>
                         </div>
 
+                        <!-- Pesan Alert Error -->
+                        <div id="uploadAlertError" style="display:none; background:#fef2f2; border:1px solid #fecaca; color:#dc2626; border-radius:10px; padding:12px 16px; font-size:0.86rem; margin-bottom:16px;"></div>
+
+                        <!-- Pesan Alert Sukses -->
+                        <div id="uploadAlertSuccess" style="display:none; background:#f0fdf4; border:1px solid #bbf7d0; color:#15803d; border-radius:10px; padding:14px 18px; font-size:0.88rem; margin-bottom:16px; line-height:1.5;"></div>
+
                         <!-- Submit Button -->
-                        <button type="submit" class="ub-btn-submit">
+                        <button type="submit" id="btnSubmitBukti" class="ub-btn-submit">
                             <i class="fas fa-cloud-arrow-up"></i> Kirim Bukti Pembayaran
                         </button>
                     </form>
@@ -256,7 +408,7 @@ require_once '../includes/header.php';
                 <div class="ub-side-banner">
                     <div class="ub-side-banner-inner">
                         <div class="ub-side-illu">
-                            <img src="/Donasi/assets/img/phone_verified.jpg" alt="Donasi Terverifikasi">
+                            <img src="/Donasi/assets/img/hands_heart.jpg" alt="Donasi Terverifikasi" onerror="this.src='/Donasi/assets/img/phone_verified.jpg'">
                         </div>
                         <div class="ub-side-quote">
                             <span>Donasi Anda</span>
@@ -344,29 +496,44 @@ require_once '../includes/header.php';
 <!-- ═══════════════════════════════════════════════════════════════════
      MODAL SUKSES PENGIRIMAN BUKTI
 ════════════════════════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="modalSuksesUpload" style="display:none;" onclick="closeModalOnBg(event)">
+<div class="ub-modal-overlay" id="modalSuksesUpload" onclick="closeModalOnBg(event)">
     <div class="ub-modal-box" onclick="event.stopPropagation()">
+        <button type="button" class="ub-modal-close-btn" onclick="tutupModalSukses()" title="Tutup Modal">&times;</button>
         <div class="ub-modal-icon-wrap">
-            <i class="fas fa-check-circle"></i>
+            <i class="fas fa-check"></i>
         </div>
         <h3>Bukti Pembayaran Berhasil Dikirim!</h3>
-        <p>Terima kasih atas kebaikan dan kepedulian Anda. Tim SIBERASA sedang memverifikasi donasi Anda dalam waktu <strong>1x24 jam kerja</strong>.</p>
+        <p>Terima kasih atas kepedulian Anda! Bukti transfer telah tersimpan ke sistem dan saat ini sedang dalam proses verifikasi tim admin (maks. <strong>1x24 jam kerja</strong>).</p>
 
         <div class="ub-ticket-box">
-            <span class="label">Kode Transaksi Donasi:</span>
-            <strong class="code" id="modalTrxCode">DONASI-2026-8921</strong>
-            <small>Bukti pembayaran telah berhasil disimpan ke sistem.</small>
+            <div class="ub-ticket-header">
+                <span class="label">Kode Tracking Donasi</span>
+                <span class="ub-ticket-status"><i class="fas fa-clock"></i> Menunggu Verifikasi</span>
+            </div>
+            <div class="ub-ticket-code-row">
+                <strong class="code" id="modalTrxCode">DONASI-2026-8921</strong>
+                <button type="button" class="btn-copy-ticket" onclick="salinKodeTracking()">
+                    <i class="far fa-copy"></i> Salin
+                </button>
+            </div>
+            <small style="color:#64748b; font-size:0.75rem; display:block;">Simpan kode di atas untuk memantau status donasi Anda kapan saja.</small>
         </div>
 
         <div class="ub-modal-actions" style="display:flex; flex-direction:column; gap:10px;">
-            <button type="button" class="ub-btn-submit" onclick="menujuCekStatusDonasi()" style="width:100%; justify-content:center;">
-                <i class="fas fa-search"></i> Cek Status Donasi
+            <button type="button" class="ub-btn-submit" onclick="menujuCekStatusDonasi()" style="width:100%; justify-content:center; padding:13px 20px; font-size:0.92rem;">
+                <i class="fas fa-search"></i> Cek Status Donasi Sekarang &rarr;
             </button>
-            <button type="button" class="ub-btn-back" onclick="window.location.href='index.php'" style="width:100%; justify-content:center; padding:12px; border:1px solid #d0e2f9; border-radius:50px; background:#f7fbff; color:#1a73e8; font-weight:600; cursor:pointer;">
-                Kembali ke Beranda
+            <button type="button" class="ub-btn-back" onclick="window.location.href='index.php'" style="width:100%; justify-content:center; padding:12px; border:1px solid #cbd5e1; border-radius:50px; background:#f8fafc; color:#334155; font-weight:600; cursor:pointer;">
+                <i class="fas fa-home"></i> Kembali ke Beranda
             </button>
         </div>
     </div>
+</div>
+
+<!-- FLOATING TOAST NOTIFIKASI -->
+<div class="ub-toast" id="ubToast">
+    <i class="fas fa-check-circle" style="color: #38bdf8; font-size:1.15rem;"></i>
+    <span id="ubToastMsg">Bukti pembayaran berhasil diunggah!</span>
 </div>
 
 
@@ -759,17 +926,21 @@ require_once '../includes/header.php';
     gap: 16px;
 }
 .ub-side-illu {
-    width: 110px;
+    width: 105px;
     height: 105px;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(26, 115, 232, 0.12);
 }
 .ub-side-illu img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    border-radius: 10px;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 14px;
 }
 .ub-side-quote {
     display: flex;
@@ -897,70 +1068,217 @@ require_once '../includes/header.php';
     border-color: #1a73e8;
 }
 
-/* Modal Sukses Popup */
+/* ═══════════════════════════════════════════════════════════════════
+   MODAL SUKSES POPUP & OVERLAY (BULLETPROOF & CENTERED)
+════════════════════════════════════════════════════════════════════ */
+.ub-modal-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(15, 23, 42, 0.72) !important;
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    z-index: 999999 !important;
+    display: none;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease-out;
+}
+
+.ub-modal-overlay.active,
+.ub-modal-overlay.show {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: all !important;
+}
+
 .ub-modal-box {
     background: #ffffff;
-    border-radius: 18px;
-    max-width: 460px;
-    width: 90%;
-    padding: 34px 28px;
+    border-radius: 20px;
+    max-width: 480px;
+    width: 100%;
+    padding: 36px 30px 30px;
     text-align: center;
-    box-shadow: 0 18px 48px rgba(0,0,0,0.18);
-    animation: ubPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.28);
+    position: relative;
+    transform: scale(0.92) translateY(15px);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
 }
-@keyframes ubPop {
-    from { opacity: 0; transform: scale(0.9); }
-    to { opacity: 1; transform: scale(1); }
+
+.ub-modal-overlay.active .ub-modal-box,
+.ub-modal-overlay.show .ub-modal-box {
+    transform: scale(1) translateY(0);
 }
+
+.ub-modal-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 18px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    border: none;
+    color: #64748b;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.ub-modal-close-btn:hover {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
 .ub-modal-icon-wrap {
-    width: 64px;
-    height: 64px;
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
     background-color: #dcfce7;
     color: #16a34a;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 2.2rem;
-    margin-bottom: 16px;
+    font-size: 2.3rem;
+    margin-bottom: 18px;
+    box-shadow: 0 0 0 8px #f0fdf4;
+    animation: ubPulse 2s infinite;
 }
+
+@keyframes ubPulse {
+    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+    70% { box-shadow: 0 0 0 14px rgba(34, 197, 94, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
 .ub-modal-box h3 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #15325e;
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #0f172a;
     margin-bottom: 8px;
+    line-height: 1.3;
 }
+
 .ub-modal-box p {
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     color: #64748b;
     line-height: 1.6;
-    margin-bottom: 20px;
+    margin-bottom: 22px;
 }
+
 .ub-ticket-box {
     background-color: #f8fafc;
     border: 1.5px dashed #cbd5e1;
-    border-radius: 10px;
-    padding: 14px;
+    border-radius: 12px;
+    padding: 16px;
     margin-bottom: 24px;
+    text-align: left;
 }
-.ub-ticket-box .label {
-    display: block;
+
+.ub-ticket-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.ub-ticket-header .label {
     font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
     color: #64748b;
-    margin-bottom: 2px;
-}
-.ub-ticket-box .code {
-    display: block;
-    font-size: 1.2rem;
-    font-weight: 800;
-    color: #1a73e8;
     letter-spacing: 0.5px;
 }
-.ub-ticket-box small {
-    display: block;
-    font-size: 0.72rem;
-    color: #94a3b8;
-    margin-top: 3px;
+
+.ub-ticket-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.74rem;
+    color: #b45309;
+    background: #fef3c7;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.ub-ticket-code-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+}
+
+.ub-ticket-code-row .code {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #0284c7;
+    letter-spacing: 1px;
+    font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.btn-copy-ticket {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    color: #0284c7;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-copy-ticket:hover {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0284c7;
+}
+
+/* Toast Floating */
+.ub-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #0f172a;
+    color: #ffffff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    z-index: 9999999;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px);
+    transition: all 0.25s ease;
+}
+
+.ub-toast.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
 }
 
 /* Responsif */
@@ -1070,25 +1388,152 @@ function updateCharCounter(textarea) {
 function handleFormSubmit(e) {
     e.preventDefault();
 
-    // Pastikan file sudah dipilih
-    const file = document.getElementById('fileInput').files[0];
-    // Jika belum pilih file baru, gunakan default sample bukti
-    const randomTrx = 'DONASI-2026-' + Math.floor(1000 + Math.random() * 9000);
-    document.getElementById('modalTrxCode').textContent = randomTrx;
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files && fileInput.files[0];
+    const alertBox = document.getElementById('uploadAlertError');
+    const successBox = document.getElementById('uploadAlertSuccess');
+    if (alertBox) alertBox.style.display = 'none';
+    if (successBox) successBox.style.display = 'none';
 
-    // Buka Modal Sukses
-    document.getElementById('modalSuksesUpload').style.display = 'flex';
+    if (!file) {
+        if (alertBox) {
+            alertBox.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Silakan pilih atau unggah berkas bukti pembayaran terlebih dahulu.';
+            alertBox.style.display = 'block';
+        } else {
+            alert('Silakan pilih atau unggah berkas bukti pembayaran terlebih dahulu.');
+        }
+        return;
+    }
+
+    const btnSubmit = document.getElementById('btnSubmitBukti');
+    const originalBtnHtml = btnSubmit.innerHTML;
+    btnSubmit.disabled = true;
+    btnSubmit.style.opacity = '0.8';
+    btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sedang Mengunggah Bukti...';
+
+    const form = document.getElementById('formUploadBukti');
+    const formData = new FormData(form);
+
+    fetch('upload_bukti.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Ubah tombol jadi status berhasil
+            btnSubmit.style.background = '#16a34a';
+            btnSubmit.style.borderColor = '#16a34a';
+            btnSubmit.style.opacity = '1';
+            btnSubmit.innerHTML = '<i class="fas fa-check-circle"></i> Berhasil Terkirim!';
+
+            // Tampilkan alert sukses pada form
+            if (successBox) {
+                successBox.innerHTML = '<i class="fas fa-check-circle"></i> <strong>Berhasil!</strong> Bukti pembayaran donasi Anda telah tersimpan ke sistem. Kode Tracking: <strong>' + data.kode + '</strong>';
+                successBox.style.display = 'block';
+            }
+
+            // Buka Modal Pop-up Sukses yang Jelas
+            bukaModalSukses(data.kode);
+
+            // Munculkan Toast Notifikasi
+            showToast('Bukti pembayaran berhasil diunggah!');
+        } else {
+            btnSubmit.disabled = false;
+            btnSubmit.style.opacity = '1';
+            btnSubmit.innerHTML = originalBtnHtml;
+            if (alertBox) {
+                alertBox.innerHTML = '<i class="fas fa-circle-xmark"></i> ' + (data.message || 'Gagal mengunggah bukti pembayaran.');
+                alertBox.style.display = 'block';
+            } else {
+                alert(data.message || 'Gagal mengunggah bukti pembayaran.');
+            }
+        }
+    })
+    .catch(err => {
+        btnSubmit.disabled = false;
+        btnSubmit.style.opacity = '1';
+        btnSubmit.innerHTML = originalBtnHtml;
+        console.error(err);
+        if (alertBox) {
+            alertBox.innerHTML = '<i class="fas fa-circle-xmark"></i> Terjadi kesalahan sistem saat mengirim bukti pembayaran. Silakan coba lagi.';
+            alertBox.style.display = 'block';
+        } else {
+            alert('Terjadi kesalahan saat mengirim bukti pembayaran.');
+        }
+    });
+}
+
+function bukaModalSukses(kode) {
+    const modal = document.getElementById('modalSuksesUpload');
+    const codeElem = document.getElementById('modalTrxCode');
+    if (codeElem && kode) codeElem.textContent = kode;
+    if (modal) {
+        modal.style.display = 'flex';
+        // Animasi transisi masuk
+        setTimeout(() => {
+            modal.classList.add('active', 'show');
+        }, 20);
+    }
+}
+
+function tutupModalSukses() {
+    const modal = document.getElementById('modalSuksesUpload');
+    if (modal) {
+        modal.classList.remove('active', 'show');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 250);
+    }
 }
 
 function closeModalOnBg(e) {
     if (e.target.id === 'modalSuksesUpload') {
-        document.getElementById('modalSuksesUpload').style.display = 'none';
+        tutupModalSukses();
+    }
+}
+
+function salinKodeTracking() {
+    const code = document.getElementById('modalTrxCode').textContent.trim();
+    salinTeks(code, 'Kode Tracking Donasi');
+}
+
+function salinTeks(text, label) {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast(`${label} berhasil disalin!`);
+        });
+    } else {
+        const input = document.createElement('input');
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        showToast(`${label} berhasil disalin!`);
+    }
+}
+
+function showToast(msg) {
+    const toast = document.getElementById('ubToast');
+    const toastMsg = document.getElementById('ubToastMsg');
+    if (toast && toastMsg) {
+        toastMsg.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3500);
     }
 }
 
 function menujuCekStatusDonasi() {
     const trx = document.getElementById('modalTrxCode').textContent.trim();
     window.location.href = 'cek_status.php?kode=' + encodeURIComponent(trx);
+}
+
+// Bersihkan ?id=... dari address bar browser agar URL selalu tampil bersih: http://localhost/Donasi/donatur/upload_bukti.php
+if (window.location.search) {
+    window.history.replaceState(null, '', window.location.pathname);
 }
 </script>
 

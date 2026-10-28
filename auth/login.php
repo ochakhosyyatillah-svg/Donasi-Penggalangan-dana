@@ -439,7 +439,7 @@ body::before{
 <div class="login-container">
 
   <!-- LINK KEMBALI KE BERANDA -->
-  <a href="/Donasi/donatur/index.php" class="back-home">
+  <a href="/Donasi/" class="back-home">
     <i class="fas fa-arrow-left"></i> Kembali ke Beranda
   </a>
 
@@ -447,7 +447,7 @@ body::before{
   <div class="card">
 
     <div class="logo-header">
-      <a href="/Donasi/donatur/index.php" title="Kembali ke Beranda">
+      <a href="/Donasi/" title="Kembali ke Beranda">
         <img src="/Donasi/assets/img/logo.png"
              alt="SIBERASA Logo"
              onerror="this.src='/Logo%20Donasi%20login.png'">

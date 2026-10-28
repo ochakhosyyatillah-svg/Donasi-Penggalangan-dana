@@ -1,10 +1,195 @@
 <?php
+require_once __DIR__ . '/../assets/config/database.php';
+
 $page_title   = 'Cek Status Pengajuan & Donasi - SIBERASA';
 $page_desc    = 'Cek status verifikasi pengajuan program atau donasi Anda secara real-time di SIBERASA.';
 $current_page = 'cek_status';
 
-// Ambil kode dari GET parameter jika ada
+// Fungsi pencarian status donasi & pengajuan langsung dari database
+function cariStatusByKode($kode, $pdo) {
+    $kode = trim($kode);
+    if (empty($kode) || !isset($pdo)) {
+        return null;
+    }
+
+    // 1. Cek di tabel donasi terlebih dahulu berdasarkan kode tracking
+    try {
+        $stmtDon = $pdo->prepare("
+            SELECT d.*, p.judul AS nama_program, pb.status_verifikasi, pb.tanggal_pembayaran
+            FROM donasi d
+            JOIN program_donasi p ON d.id_program = p.id_program
+            LEFT JOIN pembayaran pb ON d.id_donasi = pb.id_donasi
+            WHERE d.kode_tracking = ?
+            ORDER BY d.id_donasi DESC
+            LIMIT 1
+        ");
+        $stmtDon->execute([$kode]);
+        $donRow = $stmtDon->fetch(PDO::FETCH_ASSOC);
+
+        if ($donRow) {
+            $stVerif = $donRow['status_verifikasi'] ?? 'menunggu';
+            if ($donRow['status_donasi'] === 'berhasil') {
+                $stVerif = 'diterima';
+            } elseif ($donRow['status_donasi'] === 'ditolak') {
+                $stVerif = 'ditolak';
+            }
+
+            $statusText = 'Menunggu Verifikasi';
+            $statusType = 'warning';
+            $tglDonasi = date('d F Y', strtotime($donRow['tanggal_donasi']));
+            $tglBayar = !empty($donRow['tanggal_pembayaran']) ? date('d M Y', strtotime($donRow['tanggal_pembayaran'])) : date('d M Y', strtotime($donRow['tanggal_donasi']));
+
+            $steps = [
+                ['name' => 'Donasi Dibuat', 'date' => date('d M Y', strtotime($donRow['tanggal_donasi'])), 'status' => 'done'],
+                ['name' => 'Bukti Pembayaran Diunggah', 'date' => $tglBayar, 'status' => 'done'],
+                ['name' => 'Verifikasi Admin', 'date' => ($stVerif === 'diterima' ? 'Terverifikasi' : ($stVerif === 'ditolak' ? 'Ditolak' : 'Proses')), 'status' => ($stVerif === 'diterima' ? 'done' : 'active')],
+                ['name' => 'Donasi Disalurkan', 'date' => ($stVerif === 'diterima' ? 'Siap Disalurkan' : '-'), 'status' => ($stVerif === 'diterima' ? 'done' : 'pending')]
+            ];
+
+            if ($stVerif === 'diterima') {
+                $statusText = 'Terverifikasi & Selesai';
+                $statusType = 'success';
+            } elseif ($stVerif === 'ditolak') {
+                $statusText = 'Ditolak';
+                $statusType = 'danger';
+            }
+
+            return [
+                'type' => 'donasi',
+                'kode' => $donRow['kode_tracking'],
+                'title' => 'Status Donasi Anda',
+                'program' => $donRow['nama_program'],
+                'pengusul' => $donRow['nama_donatur'] ?: 'Donatur SIBERASA',
+                'nominal' => function_exists('formatRupiah') ? formatRupiah($donRow['nominal']) : ('Rp ' . number_format($donRow['nominal'], 0, ',', '.')),
+                'tanggal' => $tglDonasi,
+                'statusText' => $statusText,
+                'statusType' => $statusType,
+                'infoMessage' => ($stVerif === 'diterima') 
+                    ? 'Donasi Anda telah berhasil diverifikasi oleh admin dan berhasil tercatat. Terima kasih atas kepedulian Anda!' 
+                    : (($stVerif === 'ditolak') 
+                        ? 'Bukti donasi tidak dapat diverifikasi oleh admin. Silakan periksa kembali atau unggah ulang bukti yang sesuai.' 
+                        : 'Bukti pembayaran donasi Anda telah diterima dan sedang dalam tahap verifikasi oleh admin keuangan kami.'),
+                'stepperTitle' => 'Proses Donasi',
+                'steps' => $steps
+            ];
+        }
+    } catch (Exception $e) {}
+
+    // 2. Jika tidak ditemukan di donasi, cek tabel program_donasi (pengajuan program)
+    try {
+        $progId = null;
+        if (is_numeric($kode)) {
+            $progId = (int)$kode;
+        } elseif (preg_match('/(?:PGN[ -]?)(\d+)/i', $kode, $m)) {
+            $progId = (int)$m[1];
+        }
+
+        $progRow = null;
+        if ($progId !== null) {
+            $stmtProg = $pdo->prepare("
+                SELECT p.*, u.nama AS nama_pengusul, u.nama_organisasi
+                FROM program_donasi p
+                LEFT JOIN users u ON p.id_pengusul = u.id_user
+                WHERE p.id_program = ?
+                LIMIT 1
+            ");
+            $stmtProg->execute([$progId]);
+            $progRow = $stmtProg->fetch(PDO::FETCH_ASSOC);
+        }
+
+        if (!$progRow && strlen($kode) >= 4) {
+            $stmtProg2 = $pdo->prepare("
+                SELECT p.*, u.nama AS nama_pengusul, u.nama_organisasi
+                FROM program_donasi p
+                LEFT JOIN users u ON p.id_pengusul = u.id_user
+                WHERE p.judul LIKE ?
+                LIMIT 1
+            ");
+            $stmtProg2->execute(['%' . $kode . '%']);
+            $progRow = $stmtProg2->fetch(PDO::FETCH_ASSOC);
+        }
+
+        if ($progRow) {
+            $stProg = strtolower($progRow['status_program']);
+            $kodeFormatted = 'PGN-' . str_pad($progRow['id_program'], 5, '0', STR_PAD_LEFT);
+            $namaOrg = $progRow['nama_organisasi'] ?: ($progRow['nama_pengusul'] ?: 'Pengusul Terdaftar');
+            $tglAjukan = date('d F Y', strtotime($progRow['dibuat_pada']));
+
+            $step1 = ['name' => 'Pengajuan Dikirim', 'date' => date('d M Y', strtotime($progRow['dibuat_pada'])), 'status' => 'done'];
+            $step2 = ['name' => 'Sedang Diverifikasi', 'date' => '-', 'status' => 'pending'];
+            $step3 = ['name' => 'Disetujui', 'date' => '-', 'status' => 'pending'];
+            $step4 = ['name' => 'Program Dipublikasikan', 'date' => '-', 'status' => 'pending'];
+
+            $statusText = 'Menunggu Verifikasi';
+            $statusType = 'warning';
+            $infoMsg = 'Pengajuan Anda sedang dalam proses verifikasi oleh admin.<br>Silakan cek kembali secara berkala atau hubungi kontak kami jika ada pertanyaan.';
+
+            if ($stProg === 'menunggu') {
+                $step2['status'] = 'active';
+            } elseif ($stProg === 'disetujui' || $stProg === 'berlangsung') {
+                $statusText = 'Disetujui';
+                $statusType = 'success';
+                $tglVerif = !empty($progRow['diverifikasi_pada']) ? date('d M Y', strtotime($progRow['diverifikasi_pada'])) : date('d M Y');
+                $step2 = ['name' => 'Sedang Diverifikasi', 'date' => $tglVerif, 'status' => 'done'];
+                $step3 = ['name' => 'Disetujui', 'date' => $tglVerif, 'status' => 'done'];
+                $step4 = ['name' => 'Program Dipublikasikan', 'date' => ($stProg === 'berlangsung' ? 'Aktif' : 'Persiapan'), 'status' => ($stProg === 'berlangsung' ? 'done' : 'active')];
+                $infoMsg = 'Pengajuan program donasi Anda telah disetujui oleh admin! Program telah aktif dan dapat menerima donasi.';
+            } elseif ($stProg === 'selesai') {
+                $statusText = 'Selesai';
+                $statusType = 'success';
+                $step2['status'] = 'done';
+                $step3['status'] = 'done';
+                $step4 = ['name' => 'Program Selesai', 'date' => 'Selesai', 'status' => 'done'];
+                $infoMsg = 'Program penggalangan dana telah selesai dilaksanakan. Terima kasih atas partisipasi Anda.';
+            } elseif ($stProg === 'ditolak') {
+                $statusText = 'Ditolak';
+                $statusType = 'danger';
+                $step2 = ['name' => 'Diverifikasi Admin', 'date' => 'Ditolak', 'status' => 'done'];
+                $step3 = ['name' => 'Ditolak', 'date' => 'Tidak Disetujui', 'status' => 'active'];
+                $step4 = ['name' => 'Program Dibatalkan', 'date' => '-', 'status' => 'pending'];
+                $catatan = !empty($progRow['catatan_admin']) ? '<br><strong>Catatan Admin:</strong> ' . htmlspecialchars($progRow['catatan_admin']) : '';
+                $infoMsg = 'Pengajuan program belum dapat disetujui.' . $catatan;
+            }
+
+            return [
+                'type' => 'pengajuan',
+                'kode' => $kodeFormatted,
+                'title' => 'Status Pengajuan Donasi',
+                'program' => $progRow['judul'],
+                'pengusul' => $namaOrg,
+                'nominal' => function_exists('formatRupiah') ? formatRupiah($progRow['target_dana']) : ('Rp ' . number_format($progRow['target_dana'], 0, ',', '.')),
+                'tanggal' => $tglAjukan,
+                'statusText' => $statusText,
+                'statusType' => $statusType,
+                'infoMessage' => $infoMsg,
+                'stepperTitle' => 'Proses Pengajuan',
+                'steps' => [$step1, $step2, $step3, $step4]
+            ];
+        }
+    } catch (Exception $e) {}
+
+    return null;
+}
+
+// Handler AJAX untuk pencarian real-time tanpa reload dan tanpa mengubah URL
+if (isset($_GET['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || (isset($_POST['action']) && $_POST['action'] === 'search')) {
+    header('Content-Type: application/json');
+    $q = trim($_REQUEST['kode'] ?? '');
+    $data = cariStatusByKode($q, $pdo);
+    if ($data) {
+        echo json_encode(['success' => true, 'data' => $data]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Kode transaksi atau nomor pengajuan tidak ditemukan dalam database.']);
+    }
+    exit;
+}
+
+// Ambil kode dari GET parameter jika ada saat page load awal
 $kode = isset($_GET['kode']) ? trim($_GET['kode']) : (isset($_GET['trx']) ? trim($_GET['trx']) : '');
+$dbFound = null;
+if (!empty($kode) && isset($pdo)) {
+    $dbFound = cariStatusByKode($kode, $pdo);
+}
 
 require_once '../includes/header.php';
 ?>
@@ -60,12 +245,18 @@ require_once '../includes/header.php';
                     </button>
                 </form>
 
+                <!-- Alert jika kode tidak ditemukan -->
+                <div id="csAlertNotFound" class="cs-alert-notfound" style="display: none;">
+                    <i class="fas fa-circle-exclamation"></i>
+                    <span id="csAlertMsg">Kode transaksi atau nomor pengajuan tidak ditemukan dalam database.</span>
+                </div>
+
                 <!-- Helpful Quick Hints -->
                 <div class="cs-hints">
                     <span>Contoh kode: </span>
-                    <a href="javascript:void(0)" onclick="quickFill('PGN-20261008-001')">PGN-20261008-001</a>
+                    <span class="cs-hint-code">PGN-20261008-001</span>
                     <span class="cs-hint-sep">•</span>
-                    <a href="javascript:void(0)" onclick="quickFill('DON20260912143001')">DON20260912143001</a>
+                    <span class="cs-hint-code">DON20260912143001</span>
                 </div>
             </div>
         </div>
@@ -110,7 +301,7 @@ require_once '../includes/header.php';
                         </div>
 
                         <div class="cs-detail-row" id="rowNominal" style="display: none;">
-                            <span class="cs-label">Nominal Donasi</span>
+                            <span class="cs-label" id="lblNominal">Nominal Donasi</span>
                             <span class="cs-value" id="valNominal">Rp 100.000</span>
                         </div>
 
@@ -357,13 +548,9 @@ require_once '../includes/header.php';
     font-size: 0.84rem;
     color: #8c9eb5;
 }
-.cs-hints a {
-    color: #1d70e2;
-    text-decoration: none;
+.cs-hints .cs-hint-code {
+    color: #64748b;
     font-weight: 500;
-}
-.cs-hints a:hover {
-    text-decoration: underline;
 }
 .cs-hint-sep {
     margin: 0 6px;
@@ -663,129 +850,105 @@ require_once '../includes/header.php';
         padding: 24px 20px;
     }
 }
+
+/* Alert Kode Tidak Ditemukan */
+.cs-alert-notfound {
+    margin-top: 18px;
+    padding: 12px 18px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+    animation: fadeIn 0.25s ease-in-out;
+}
+.cs-alert-notfound i {
+    font-size: 1.15rem;
+    color: #ef4444;
+    flex-shrink: 0;
+}
 </style>
 
 <!-- ═══════════════════════════════════════════════════════════════════
-     JAVASCRIPT LOGIC INTERAKTIF
+     JAVASCRIPT LOGIC INTERAKTIF (TERHUBUNG KE DATABASE & URL BERSIH)
 ════════════════════════════════════════════════════════════════════ -->
 <script>
-// Mock data untuk pengujian & pencarian real-time
-const dbStatus = {
-    // 1. Data sesuai screenshot contoh user
-    'PGN-20261008-001': {
-        type: 'pengajuan',
-        kode: 'PGN-20261008-001',
-        title: 'Status Pengajuan Donasi',
-        program: 'Bantuan Pendidikan Anak Desa',
-        pengusul: 'HIMA Informatika',
-        tanggal: '08 Oktober 2026',
-        statusText: 'Menunggu Verifikasi',
-        statusType: 'warning',
-        infoMessage: 'Pengajuan Anda sedang dalam proses verifikasi oleh admin.<br>Silakan cek kembali secara berkala atau hubungi kontak kami jika ada pertanyaan.',
-        stepperTitle: 'Proses Pengajuan',
-        steps: [
-            { name: 'Pengajuan Dikirim', date: '08 Okt 2026', status: 'done' },
-            { name: 'Sedang Diverifikasi', date: '-', status: 'active' },
-            { name: 'Disetujui', date: '-', status: 'pending' },
-            { name: 'Program Dipublikasikan', date: '-', status: 'pending' }
-        ]
-    },
-    // 2. Data pengajuan kedua: sudah disetujui
-    'PGN-20261005-002': {
-        type: 'pengajuan',
-        kode: 'PGN-20261005-002',
-        title: 'Status Pengajuan Donasi',
-        program: 'Paket Alat Tulis untuk Panti Asuhan',
-        pengusul: 'UKM Forum Kajian Kitab Kuning',
-        tanggal: '05 Oktober 2026',
-        statusText: 'Disetujui',
-        statusType: 'success',
-        infoMessage: 'Pengajuan Anda telah disetujui! Tim kami sedang mempersiapkan publikasi program ke halaman utama donasi.',
-        stepperTitle: 'Proses Pengajuan',
-        steps: [
-            { name: 'Pengajuan Dikirim', date: '05 Okt 2026', status: 'done' },
-            { name: 'Sedang Diverifikasi', date: '06 Okt 2026', status: 'done' },
-            { name: 'Disetujui', date: '07 Okt 2026', status: 'active' },
-            { name: 'Program Dipublikasikan', date: '-', status: 'pending' }
-        ]
-    },
-    // 3. Data donasi: donatur mengecek status transfer donasi
-    'DON20260912143001': {
-        type: 'donasi',
-        kode: 'DON20260912143001',
-        title: 'Status Donasi Anda',
-        program: 'Bantu Renovasi Sekolah Pelosok Negeri 1',
-        pengusul: 'Ahmad Fauzi',
-        nominal: 'Rp 100.000',
-        tanggal: '12 September 2026',
-        statusText: 'Terverifikasi & Selesai',
-        statusType: 'success',
-        infoMessage: 'Donasi Anda telah terverifikasi oleh admin dan berhasil disalurkan ke penerima manfaat. Terima kasih atas kepedulian Anda!',
-        stepperTitle: 'Proses Donasi',
-        steps: [
-            { name: 'Donasi Dibuat', date: '12 Sep 2026', status: 'done' },
-            { name: 'Bukti Pembayaran Diunggah', date: '12 Sep 2026', status: 'done' },
-            { name: 'Verifikasi Admin Selesai', date: '12 Sep 2026', status: 'done' },
-            { name: 'Donasi Disalurkan', date: '13 Sep 2026', status: 'done' }
-        ]
-    }
-};
-
-// Quick Fill helper
-function quickFill(kode) {
-    document.getElementById('csInputKode').value = kode;
-    handleCekStatusSubmit(new Event('submit'));
+// Bersihkan ?kode=... atau parameter query dari address bar browser
+// agar URL selalu tampil bersih: http://localhost/Donasi/donatur/cek_status.php
+if (window.location.search) {
+    window.history.replaceState(null, '', window.location.pathname);
 }
 
-// Handler Submit Form Pencarian
-function handleCekStatusSubmit(e) {
+// Data awal jika di-load dari URL parameter PHP
+window.csInitialData = <?= $dbFound ? json_encode($dbFound) : 'null' ?>;
+
+// Handler Submit Form Pencarian (Terhubung langsung ke database via AJAX)
+async function handleCekStatusSubmit(e) {
     if (e && e.preventDefault) e.preventDefault();
 
-    let query = document.getElementById('csInputKode').value.trim();
-    // Default jika kosong ke kode di screenshot user
+    const inputEl = document.getElementById('csInputKode');
+    const alertEl = document.getElementById('csAlertNotFound');
+    const btnSubmit = document.querySelector('.cs-btn-submit');
+    
+    if (alertEl) alertEl.style.display = 'none';
+
+    let query = inputEl.value.trim();
     if (!query) {
-        query = 'PGN-20261008-001';
-        document.getElementById('csInputKode').value = query;
+        if (alertEl) {
+            document.getElementById('csAlertMsg').textContent = 'Silakan masukkan kode transaksi donasi atau nomor pengajuan.';
+            alertEl.style.display = 'flex';
+        }
+        inputEl.focus();
+        return;
     }
 
-    // Ambil data dari database mock atau generate data dinamis
-    let data = dbStatus[query.toUpperCase()] || dbStatus[query];
-
-    if (!data) {
-        // Jika kode kustom dimasukkan, sesuaikan secara cerdas
-        const isDonasi = query.toUpperCase().startsWith('DON');
-        data = {
-            type: isDonasi ? 'donasi' : 'pengajuan',
-            kode: query.toUpperCase(),
-            title: isDonasi ? 'Status Donasi Anda' : 'Status Pengajuan Donasi',
-            program: isDonasi ? 'Program Kebaikan Sesama' : 'Bantuan Sosial & Pendidikan Mahasiswa',
-            pengusul: isDonasi ? 'Donatur Terdaftar' : 'Pengusul Program',
-            tanggal: '<?= date('d F Y') ?>',
-            statusText: 'Menunggu Verifikasi',
-            statusType: 'warning',
-            infoMessage: isDonasi 
-                ? 'Bukti donasi Anda sedang dalam tahap verifikasi oleh admin keuangan kami. Mohon tunggu maksimal 1x24 jam.'
-                : 'Pengajuan Anda sedang dalam proses verifikasi oleh admin.<br>Silakan cek kembali secara berkala atau hubungi kontak kami jika ada pertanyaan.',
-            stepperTitle: isDonasi ? 'Proses Donasi' : 'Proses Pengajuan',
-            steps: isDonasi ? [
-                { name: 'Donasi Dibuat', date: '<?= date('d M Y') ?>', status: 'done' },
-                { name: 'Bukti Pembayaran Diunggah', date: '<?= date('d M Y') ?>', status: 'active' },
-                { name: 'Verifikasi Admin Selesai', date: '-', status: 'pending' },
-                { name: 'Donasi Disalurkan', date: '-', status: 'pending' }
-            ] : [
-                { name: 'Pengajuan Dikirim', date: '<?= date('d M Y') ?>', status: 'done' },
-                { name: 'Sedang Diverifikasi', date: '-', status: 'active' },
-                { name: 'Disetujui', date: '-', status: 'pending' },
-                { name: 'Program Dipublikasikan', date: '-', status: 'pending' }
-            ]
-        };
+    // Jika data awal sudah ada dan kodenya cocok dengan input
+    if (window.csInitialData && (window.csInitialData.kode.toUpperCase() === query.toUpperCase())) {
+        renderResult(window.csInitialData);
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname);
+        }
+        return;
     }
 
-    renderResult(data);
+    // Ubah tombol jadi loading
+    const originalBtnHtml = btnSubmit.innerHTML;
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Mencari...</span>';
 
-    // Update URL history tanpa refresh penuh
-    if (window.history && window.history.pushState) {
-        window.history.pushState({ kode: data.kode }, '', '?kode=' + encodeURIComponent(data.kode));
+    try {
+        const response = await fetch('cek_status.php?ajax=1&kode=' + encodeURIComponent(query));
+        const res = await response.json();
+
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = originalBtnHtml;
+
+        if (res.success && res.data) {
+            renderResult(res.data);
+            // Pastikan URL di address bar browser tetap bersih tanpa query parameter
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState(null, '', window.location.pathname);
+            }
+        } else {
+            if (alertEl) {
+                document.getElementById('csAlertMsg').textContent = res.message || 'Kode transaksi atau nomor pengajuan tidak ditemukan di database.';
+                alertEl.style.display = 'flex';
+            } else {
+                alert(res.message || 'Data tidak ditemukan.');
+            }
+        }
+    } catch (err) {
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = originalBtnHtml;
+        console.error(err);
+        if (alertEl) {
+            document.getElementById('csAlertMsg').textContent = 'Terjadi kendala saat menghubungi database. Silakan coba lagi.';
+            alertEl.style.display = 'flex';
+        }
     }
 }
 
@@ -805,6 +968,7 @@ function renderResult(data) {
         document.getElementById('lblTanggal').textContent = 'Tanggal Donasi';
         if (data.nominal) {
             document.getElementById('rowNominal').style.display = 'grid';
+            document.getElementById('lblNominal').textContent = 'Nominal Donasi';
             document.getElementById('valNominal').textContent = data.nominal;
         } else {
             document.getElementById('rowNominal').style.display = 'none';
@@ -813,7 +977,13 @@ function renderResult(data) {
         document.getElementById('lblPengusul').textContent = 'Pengusul';
         document.getElementById('valPengusul').textContent = data.pengusul;
         document.getElementById('lblTanggal').textContent = 'Tanggal Pengajuan';
-        document.getElementById('rowNominal').style.display = 'none';
+        if (data.nominal) {
+            document.getElementById('rowNominal').style.display = 'grid';
+            document.getElementById('lblNominal').textContent = 'Target Dana';
+            document.getElementById('valNominal').textContent = data.nominal;
+        } else {
+            document.getElementById('rowNominal').style.display = 'none';
+        }
     }
 
     document.getElementById('valTanggal').textContent = data.tanggal;
@@ -871,34 +1041,32 @@ function kembaliKePencarian() {
     document.getElementById('csResultView').style.display = 'none';
     document.getElementById('csSearchView').style.display = 'flex';
 
-    if (window.history && window.history.pushState) {
-        window.history.pushState({}, '', window.location.pathname);
+    if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname);
     }
+
+    const alertEl = document.getElementById('csAlertNotFound');
+    if (alertEl) alertEl.style.display = 'none';
 
     const input = document.getElementById('csInputKode');
     input.focus();
     input.select();
 }
 
-// Handle Browser Back / Forward Button
-window.addEventListener('popstate', function(e) {
-    const params = new URLSearchParams(window.location.search);
-    const kodeParam = params.get('kode') || params.get('trx');
-    if (kodeParam) {
-        document.getElementById('csInputKode').value = kodeParam;
-        handleCekStatusSubmit(new Event('submit'));
+// Auto render jika data ditemukan saat halaman dimuat
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.csInitialData) {
+        renderResult(window.csInitialData);
     } else {
-        document.getElementById('csResultView').style.display = 'none';
-        document.getElementById('csSearchView').style.display = 'flex';
+        <?php if (!empty($kode)): ?>
+        const alertEl = document.getElementById('csAlertNotFound');
+        if (alertEl) {
+            document.getElementById('csAlertMsg').textContent = 'Kode "<?= htmlspecialchars($kode) ?>" tidak ditemukan di database.';
+            alertEl.style.display = 'flex';
+        }
+        <?php endif; ?>
     }
 });
-
-// Auto run jika kode ada saat page load
-<?php if (!empty($kode)): ?>
-document.addEventListener('DOMContentLoaded', function() {
-    handleCekStatusSubmit(new Event('submit'));
-});
-<?php endif; ?>
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

@@ -1,12 +1,11 @@
 <?php
-$page_title   = 'Kontak - SIBERASA';
-$page_desc    = 'Hubungi tim SIBERASA untuk pertanyaan, saran, atau kolaborasi program donasi.';
+$page_title   = 'Hubungi Kami - SIBERASA';
+$page_desc    = 'Kami siap membantu Anda. Jika memiliki pertanyaan, saran, atau ingin berdiskusi lebih lanjut, jangan ragu untuk menghubungi kami.';
 $current_page = 'kontak';
 require_once __DIR__ . '/../assets/config/database.php';
-require_once '../includes/header.php';
 
 $success = false;
-$errors  = [];
+$error_msg = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nama   = trim($_POST['nama'] ?? '');
@@ -14,227 +13,707 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subjek = trim($_POST['subjek'] ?? '');
     $pesan  = trim($_POST['pesan'] ?? '');
 
-    if (empty($nama))   $errors[] = 'Nama wajib diisi';
-    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Email tidak valid';
-    if (empty($pesan))  $errors[] = 'Pesan wajib diisi';
-
-    if (empty($errors)) {
-        // Simpan ke file (karena tanpa DB)
-        $log = date('Y-m-d H:i:s') . " | $nama | $email | $subjek | $pesan\n";
-        file_put_contents(__DIR__ . '/pesan_masuk.txt', $log, FILE_APPEND);
+    if (empty($nama)) {
+        $error_msg = 'Silakan masukkan nama lengkap Anda.';
+    } elseif (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error_msg = 'Format alamat email tidak valid.';
+    } elseif (empty($pesan)) {
+        $error_msg = 'Silakan tuliskan pesan yang ingin Anda sampaikan.';
+    } else {
+        // Simpan log pesan masuk ke file
+        $log = date('Y-m-d H:i:s') . " | $nama | $email | $subjek | " . str_replace(["\r", "\n"], ' ', $pesan) . "\n";
+        @file_put_contents(__DIR__ . '/pesan_masuk.txt', $log, FILE_APPEND);
         $success = true;
     }
 }
+
+require_once '../includes/header.php';
 ?>
 
-<!-- BANNER -->
-<div style="background: linear-gradient(135deg, #EBF4FF 0%, #DBEAFE 60%, #E0F2FE 100%); padding: 64px 24px; text-align:center;">
-    <div class="container">
-        <div class="hero-badge" style="display:inline-flex;margin-bottom:16px;"><i class="fas fa-envelope"></i> Hubungi Kami</div>
-        <h1 style="font-size: clamp(1.8rem,4vw,2.6rem); font-weight:800; color:var(--primary); margin-bottom:14px;">Kontak SIBERASA</h1>
-        <p style="color:var(--text-medium); font-size:0.95rem; max-width:500px; margin:0 auto;">
-            Ada pertanyaan atau ingin berkolaborasi? Tim kami siap membantu Anda dengan senang hati
-        </p>
-    </div>
-</div>
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   HALAMAN KONTAK - SESUAI DESAIN REFERENSI
+════════════════════════════════════════════════════════════════════ */
+.kontak-page-wrap {
+    font-family: 'Poppins', sans-serif;
+    background-color: #ffffff;
+    color: #1e293b;
+    overflow-x: hidden;
+}
 
-<section style="padding:60px 0; background:#F8FAFF;">
-    <div class="container">
-        <div style="display:grid; grid-template-columns:1fr 1.4fr; gap:40px; align-items:start;">
+/* ── Hero Section ── */
+.kontak-hero {
+    position: relative;
+    background: radial-gradient(circle at 85% 25%, rgba(219, 234, 254, 0.45) 0%, transparent 45%),
+                radial-gradient(circle at 10% 20%, rgba(224, 242, 254, 0.45) 0%, transparent 40%),
+                linear-gradient(180deg, #edf5fd 0%, #f6faff 70%, #ffffff 100%);
+    padding: 50px 24px 44px 24px;
+    border-bottom: 1px solid #f0f4f9;
+}
 
-            <!-- Info Kontak -->
-            <div>
-                <h2 style="font-size:1.3rem;font-weight:700;color:var(--text-dark);margin-bottom:24px;">Informasi Kontak</h2>
+.kontak-hero-container {
+    max-width: 1140px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+}
 
-                <?php
-                $contacts = [
-                    ['icon'=>'fas fa-map-marker-alt','color'=>'#1A73E8','label'=>'Alamat','val'=>'Jl. Contoh No. 123, Kelurahan Maju, Jakarta Selatan, DKI Jakarta 12345'],
-                    ['icon'=>'fas fa-envelope','color'=>'#34C759','label'=>'Email','val'=>'info@siberasa.id'],
-                    ['icon'=>'fas fa-phone','color'=>'#8B5CF6','label'=>'Telepon','val'=>'+62 21 1234 5678'],
-                    ['icon'=>'fab fa-whatsapp','color'=>'#25D366','label'=>'WhatsApp','val'=>'+62 812 3456 7890'],
-                    ['icon'=>'fas fa-clock','color'=>'#F59E0B','label'=>'Jam Operasional','val'=>'Senin–Jumat: 08.00–17.00 WIB'],
-                ];
-                foreach ($contacts as $c):
-                ?>
-                <div style="display:flex;gap:16px;padding:18px;background:white;border-radius:var(--radius-md);margin-bottom:12px;box-shadow:var(--shadow-sm);border:1px solid var(--border);transition:all 0.2s;"
-                     onmouseover="this.style.borderColor='var(--primary)';this.style.transform='translateX(4px)'"
-                     onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
-                    <div style="width:46px;height:46px;border-radius:12px;background:<?= $c['color'] ?>20;display:flex;align-items:center;justify-content:center;color:<?= $c['color'] ?>;font-size:1.1rem;flex-shrink:0;">
-                        <i class="<?= $c['icon'] ?>"></i>
-                    </div>
-                    <div>
-                        <small style="color:var(--text-light);font-size:0.75rem;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;"><?= $c['label'] ?></small>
-                        <p style="font-size:0.88rem;color:var(--text-dark);font-weight:500;margin-top:2px;"><?= $c['val'] ?></p>
-                    </div>
+.kontak-hero-content {
+    flex: 1;
+    max-width: 580px;
+    z-index: 2;
+}
+
+.kontak-badge-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.kontak-badge-pill {
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 5px 16px;
+    border-radius: 50px;
+    display: inline-block;
+    letter-spacing: 0.1px;
+}
+
+.kontak-badge-line {
+    width: 26px;
+    height: 2px;
+    background: #93c5fd;
+    border-radius: 2px;
+}
+
+.kontak-badge-dot {
+    width: 7px;
+    height: 7px;
+    background: #93c5fd;
+    border-radius: 50%;
+}
+
+.kontak-hero-title {
+    font-size: clamp(2.3rem, 4.5vw, 3.4rem);
+    font-weight: 800;
+    color: #0b326f;
+    line-height: 1.15;
+    margin: 0 0 16px 0;
+    letter-spacing: -0.5px;
+}
+
+.kontak-hero-desc {
+    font-size: 0.96rem;
+    color: #4b5e7e;
+    line-height: 1.65;
+    margin: 0;
+    font-weight: 400;
+}
+
+.kontak-hero-image-wrap {
+    flex-shrink: 0;
+    width: 360px;
+    max-width: 44%;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    z-index: 2;
+}
+
+.kontak-hero-image-wrap img {
+    width: 100%;
+    max-height: 290px;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+}
+
+/* ── Main Content Section ── */
+.kontak-main-section {
+    padding: 44px 24px 80px 24px;
+    background: #ffffff;
+}
+
+.kontak-main-grid {
+    max-width: 1140px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1.15fr 0.95fr;
+    gap: 36px;
+    align-items: start;
+}
+
+/* ── Kolom Kiri: Informasi Kontak ── */
+.kontak-info-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.kontak-section-heading {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #0f2851;
+    margin: 0 0 8px 0;
+}
+
+.kontak-section-subtitle {
+    font-size: 0.88rem;
+    color: #5f718d;
+    line-height: 1.55;
+    margin: 0 0 28px 0;
+}
+
+.kontak-cards-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.kontak-card {
+    background: #ffffff;
+    border: 1px solid #e5edf6;
+    border-radius: 16px;
+    padding: 20px 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
+    transition: all 0.25s ease;
+}
+
+.kontak-card:hover {
+    border-color: #93c5fd;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(26, 115, 232, 0.08);
+}
+
+.kontak-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #e0f0fe;
+    color: #1a73e8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.kontak-card-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.kontak-card-title {
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: #0f2851;
+    margin: 0 0 4px 0;
+}
+
+.kontak-card-primary {
+    font-size: 0.82rem;
+    color: #334155;
+    font-weight: 500;
+    line-height: 1.45;
+    margin: 0 0 3px 0;
+    word-break: break-word;
+}
+
+.kontak-card-secondary {
+    font-size: 0.77rem;
+    color: #64748b;
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* ── Kolom Kanan: Form Kirim Pesan ── */
+.kontak-form-card {
+    background: #f1f7fd;
+    border: 1px solid #e1ecf8;
+    border-radius: 20px;
+    padding: 32px 32px 34px 32px;
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.03);
+}
+
+.kontak-form-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #0f2851;
+    margin: 0 0 6px 0;
+}
+
+.kontak-form-desc {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 0 0 24px 0;
+}
+
+.kontak-input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.kontak-field-single {
+    margin-bottom: 14px;
+}
+
+.kontak-input-box {
+    background: #ffffff;
+    border: 1px solid #dce6f1;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    height: 48px;
+    transition: all 0.2s ease;
+}
+
+.kontak-input-box.textarea-box {
+    height: auto;
+    align-items: flex-start;
+    padding: 12px 14px;
+    margin-bottom: 20px;
+}
+
+.kontak-input-box:focus-within {
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 3.5px rgba(26, 115, 232, 0.12);
+}
+
+.kontak-icon-inside {
+    color: #94a3b8;
+    font-size: 0.95rem;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 18px;
+}
+
+.kontak-input-box.textarea-box .kontak-icon-inside {
+    margin-top: 3px;
+}
+
+.kontak-input-box input,
+.kontak-input-box textarea {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.88rem;
+    color: #1e293b;
+}
+
+.kontak-input-box textarea {
+    min-height: 125px;
+    resize: vertical;
+    line-height: 1.55;
+}
+
+.kontak-input-box input::placeholder,
+.kontak-input-box textarea::placeholder {
+    color: #94a3b8;
+    font-size: 0.88rem;
+}
+
+.kontak-btn-submit {
+    width: 100%;
+    background: #1871e8;
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    padding: 13px 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 12px rgba(24, 113, 232, 0.25);
+}
+
+.kontak-btn-submit:hover {
+    background: #1360cc;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(24, 113, 232, 0.35);
+}
+
+.kontak-btn-submit:active {
+    transform: translateY(0);
+}
+
+/* Alert Notification */
+.kontak-alert-box {
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: 0.84rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.kontak-alert-success {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+}
+
+.kontak-alert-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+/* ── Section FAQ Ringkas di Bawah ── */
+.kontak-faq-wrap {
+    max-width: 1140px;
+    margin: 50px auto 0 auto;
+    padding-top: 40px;
+    border-top: 1px solid #edf2f7;
+}
+
+.kontak-faq-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.kontak-faq-header h3 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #0f2851;
+    margin: 0 0 6px 0;
+}
+
+.kontak-faq-header p {
+    font-size: 0.86rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.kontak-faq-list {
+    max-width: 760px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.kontak-faq-item {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.kontak-faq-item:hover {
+    border-color: #cbd5e1;
+}
+
+.kontak-faq-btn {
+    width: 100%;
+    padding: 16px 20px;
+    text-align: left;
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1e293b;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.kontak-faq-body {
+    display: none;
+    padding: 0 20px 16px 20px;
+    color: #64748b;
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+/* ── Responsive Styling ── */
+@media (max-width: 992px) {
+    .kontak-hero-container {
+        flex-direction: column;
+        text-align: center;
+        gap: 32px;
+    }
+    .kontak-hero-content {
+        max-width: 100%;
+    }
+    .kontak-badge-row {
+        justify-content: center;
+    }
+    .kontak-hero-image-wrap {
+        max-width: 300px;
+        width: 100%;
+        justify-content: center;
+    }
+    .kontak-main-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+}
+
+@media (max-width: 640px) {
+    .kontak-hero {
+        padding: 36px 18px 40px 18px;
+    }
+    .kontak-cards-grid {
+        grid-template-columns: 1fr;
+    }
+    .kontak-input-row {
+        grid-template-columns: 1fr;
+    }
+    .kontak-form-card {
+        padding: 24px 20px;
+    }
+}
+</style>
+
+<div class="kontak-page-wrap">
+    
+    <!-- ═══════════════════════════════════════════════════════════════════
+         1. HERO HEADER SECTION
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="kontak-hero">
+        <div class="kontak-hero-container">
+            
+            <div class="kontak-hero-content">
+                <div class="kontak-badge-row">
+                    <span class="kontak-badge-pill">Kontak Kami</span>
+                    <span class="kontak-badge-line"></span>
+                    <span class="kontak-badge-dot"></span>
                 </div>
-                <?php endforeach; ?>
+                
+                <h1 class="kontak-hero-title">Hubungi Kami</h1>
+                
+                <p class="kontak-hero-desc">
+                    Kami siap membantu Anda. Jika memiliki pertanyaan, saran,<br>
+                    atau ingin berdiskusi lebih lanjut, jangan ragu untuk menghubungi kami.
+                </p>
+            </div>
 
-                <!-- Social Media -->
-                <div style="background:white;border-radius:var(--radius-md);padding:20px;box-shadow:var(--shadow-sm);border:1px solid var(--border);margin-top:8px;">
-                    <p style="font-size:0.85rem;font-weight:600;color:var(--text-dark);margin-bottom:14px;">Ikuti Kami:</p>
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <?php
-                        $socials = [
-                            ['icon'=>'fab fa-instagram','color'=>'#E1306C','label'=>'Instagram'],
-                            ['icon'=>'fab fa-facebook-f','color'=>'#1877F2','label'=>'Facebook'],
-                            ['icon'=>'fab fa-x-twitter','color'=>'#000000','label'=>'X (Twitter)'],
-                            ['icon'=>'fab fa-youtube','color'=>'#FF0000','label'=>'YouTube'],
-                        ];
-                        foreach ($socials as $s):
-                        ?>
-                        <a href="#" style="display:flex;align-items:center;gap:8px;padding:8px 14px;border:1.5px solid var(--border);border-radius:50px;font-size:0.8rem;color:var(--text-medium);font-weight:500;transition:all 0.2s;"
-                           onmouseover="this.style.borderColor='<?= $s['color'] ?>';this.style.color='<?= $s['color'] ?>'"
-                           onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-medium)'">
-                            <i class="<?= $s['icon'] ?>"></i><?= $s['label'] ?>
-                        </a>
-                        <?php endforeach; ?>
+            <div class="kontak-hero-image-wrap">
+                <img src="/Donasi/assets/img/kontak_hero.jpg" alt="Ilustrasi Hubungi Kami">
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         2. MAIN CONTENT (INFORMASI KONTAK & FORM KIRIM PESAN)
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="kontak-main-section">
+        <div class="kontak-main-grid">
+
+            <!-- ── KOLOM KIRI: INFORMASI KONTAK ── -->
+            <div class="kontak-info-col">
+                <h2 class="kontak-section-heading">Informasi Kontak</h2>
+                <p class="kontak-section-subtitle">
+                    Anda dapat menghubungi kami melalui berbagai saluran berikut<br>
+                    atau mengisi formulir yang tersedia di samping.
+                </p>
+
+                <div class="kontak-cards-grid">
+                    
+                    <!-- Card 1: Alamat -->
+                    <div class="kontak-card">
+                        <div class="kontak-card-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div class="kontak-card-content">
+                            <h4 class="kontak-card-title">Alamat</h4>
+                            <p class="kontak-card-primary">UIN Siber Syekh Nurjati Cirebon</p>
+                            <p class="kontak-card-secondary">
+                                Jl. Perjuangan, Sunyaragi, Kec. Kesambi,<br>
+                                Kota Cirebon, Jawa Barat 45132
+                            </p>
+                        </div>
                     </div>
+
+                    <!-- Card 2: Email -->
+                    <div class="kontak-card">
+                        <div class="kontak-card-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div class="kontak-card-content">
+                            <h4 class="kontak-card-title">Email</h4>
+                            <p class="kontak-card-primary">
+                                <a href="mailto:siberasa@uinsus.ac.id" style="color:inherit; text-decoration:none;">siberasa@uinsus.ac.id</a>
+                            </p>
+                            <p class="kontak-card-secondary">
+                                Kami akan membalas email Anda secepatnya.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Telepon -->
+                    <div class="kontak-card">
+                        <div class="kontak-card-icon">
+                            <i class="fas fa-phone-alt"></i>
+                        </div>
+                        <div class="kontak-card-content">
+                            <h4 class="kontak-card-title">Telepon</h4>
+                            <p class="kontak-card-primary">
+                                <a href="tel:+6281234567890" style="color:inherit; text-decoration:none;">+62 812 3456 7890</a>
+                            </p>
+                            <p class="kontak-card-secondary">
+                                (Senin - Jumat, 08.00 - 16.00 WIB)
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Media Sosial -->
+                    <div class="kontak-card">
+                        <div class="kontak-card-icon">
+                            <i class="fab fa-instagram"></i>
+                        </div>
+                        <div class="kontak-card-content">
+                            <h4 class="kontak-card-title">Media Sosial</h4>
+                            <p class="kontak-card-primary">
+                                <a href="https://instagram.com/siberasa_uin" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:none;">@siberasa_uin</a>
+                            </p>
+                            <p class="kontak-card-secondary">
+                                Ikuti kami untuk mendapatkan informasi terbaru.
+                            </p>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
-            <!-- Form Kontak -->
-            <div style="background:white;border-radius:var(--radius-xl);padding:36px;box-shadow:var(--shadow-lg);border:1px solid var(--border);">
-                <h2 style="font-size:1.3rem;font-weight:700;color:var(--text-dark);margin-bottom:6px;">Kirim Pesan</h2>
-                <p style="font-size:0.85rem;color:var(--text-light);margin-bottom:28px;">Kami akan membalas pesan Anda dalam 1×24 jam</p>
+            <!-- ── KOLOM KANAN: FORM KIRIM PESAN ── -->
+            <div class="kontak-form-card">
+                <h3 class="kontak-form-title">Kirim Pesan</h3>
+                <p class="kontak-form-desc">Isi form di bawah ini untuk mengirim pesan kepada kami.</p>
 
                 <?php if ($success): ?>
-                <div style="background:#F0FDF4;border:2px solid #34C759;border-radius:var(--radius-md);padding:20px;margin-bottom:24px;display:flex;gap:12px;align-items:center;">
-                    <i class="fas fa-check-circle" style="color:#34C759;font-size:1.5rem;flex-shrink:0;"></i>
-                    <div>
-                        <strong style="color:#166534;">Pesan Terkirim!</strong>
-                        <p style="font-size:0.85rem;color:#166534;margin-top:4px;">Terima kasih telah menghubungi kami. Tim kami akan segera merespons pesan Anda.</p>
+                    <div class="kontak-alert-box kontak-alert-success">
+                        <i class="fas fa-check-circle" style="font-size:1.1rem; flex-shrink:0;"></i>
+                        <span>Pesan Anda berhasil dikirim! Tim SIBERASA akan segera menghubungi Anda.</span>
                     </div>
-                </div>
                 <?php endif; ?>
 
-                <?php if (!empty($errors)): ?>
-                <div style="background:#FEF2F2;border:2px solid #EF4444;border-radius:var(--radius-md);padding:16px;margin-bottom:20px;">
-                    <?php foreach ($errors as $e): ?>
-                    <p style="color:#DC2626;font-size:0.85rem;"><i class="fas fa-exclamation-circle"></i> <?= $e ?></p>
-                    <?php endforeach; ?>
-                </div>
+                <?php if (!empty($error_msg)): ?>
+                    <div class="kontak-alert-box kontak-alert-error">
+                        <i class="fas fa-exclamation-circle" style="font-size:1.1rem; flex-shrink:0;"></i>
+                        <span><?= htmlspecialchars($error_msg) ?></span>
+                    </div>
                 <?php endif; ?>
 
                 <form method="POST" action="kontak.php">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                        <div class="form-group">
-                            <label>Nama Lengkap *</label>
-                            <div class="input-wrap">
-                                <i class="fas fa-user"></i>
-                                <input type="text" name="nama" value="<?= htmlspecialchars($_POST['nama'] ?? '') ?>" placeholder="Nama Anda" required>
-                            </div>
+                    
+                    <!-- Row 1: Nama Lengkap & Email -->
+                    <div class="kontak-input-row">
+                        <div class="kontak-input-box">
+                            <span class="kontak-icon-inside">
+                                <i class="far fa-user"></i>
+                            </span>
+                            <input type="text" name="nama" value="<?= htmlspecialchars($_POST['nama'] ?? '') ?>" placeholder="Nama Lengkap" required>
                         </div>
-                        <div class="form-group">
-                            <label>Email *</label>
-                            <div class="input-wrap">
-                                <i class="fas fa-envelope"></i>
-                                <input type="email" name="email" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" placeholder="email@contoh.com" required>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label>No. Telepon</label>
-                        <div class="input-wrap">
-                            <i class="fas fa-phone"></i>
-                            <input type="tel" name="telepon" value="<?= htmlspecialchars($_POST['telepon'] ?? '') ?>" placeholder="08xxxxxxxxxx">
+                        <div class="kontak-input-box">
+                            <span class="kontak-icon-inside">
+                                <i class="far fa-envelope"></i>
+                            </span>
+                            <input type="email" name="email" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" placeholder="Email" required>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Subjek</label>
-                        <div class="input-wrap">
-                            <i class="fas fa-tag"></i>
-                            <input type="text" name="subjek" value="<?= htmlspecialchars($_POST['subjek'] ?? '') ?>" placeholder="Topik pesan Anda">
+                    <!-- Row 2: Subjek -->
+                    <div class="kontak-field-single">
+                        <div class="kontak-input-box">
+                            <span class="kontak-icon-inside">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                                </svg>
+                            </span>
+                            <input type="text" name="subjek" value="<?= htmlspecialchars($_POST['subjek'] ?? '') ?>" placeholder="Subjek">
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Pesan *</label>
-                        <textarea name="pesan" rows="5" 
-                            placeholder="Tuliskan pesan, pertanyaan, atau saran Anda di sini..."
-                            style="width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:var(--radius-sm);font-family:'Poppins',sans-serif;font-size:0.88rem;resize:vertical;outline:none;min-height:130px;transition:border-color 0.2s;"
-                            onfocus="this.style.borderColor='var(--primary)'"
-                            onblur="this.style.borderColor='var(--border)'"
-                            required><?= htmlspecialchars($_POST['pesan'] ?? '') ?></textarea>
+                    <!-- Row 3: Pesan Anda -->
+                    <div class="kontak-input-box textarea-box">
+                        <span class="kontak-icon-inside">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </span>
+                        <textarea name="pesan" rows="4" placeholder="Pesan Anda..." required><?= htmlspecialchars($_POST['pesan'] ?? '') ?></textarea>
                     </div>
 
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
-                        <input type="checkbox" id="agreeCheck" required style="width:16px;height:16px;accent-color:var(--primary);">
-                        <label for="agreeCheck" style="font-size:0.82rem;color:var(--text-medium);">
-                            Saya setuju dengan <a href="#" style="color:var(--primary);">Kebijakan Privasi</a> SIBERASA
-                        </label>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:0.95rem;">
+                    <!-- Submit Button -->
+                    <button type="submit" class="kontak-btn-submit">
                         <i class="fas fa-paper-plane"></i> Kirim Pesan
                     </button>
+
                 </form>
             </div>
+
         </div>
 
-        <!-- FAQ -->
-        <div style="margin-top:60px;">
-            <div style="text-align:center;margin-bottom:36px;">
-                <div class="section-title" style="text-align:center;">
-                    <span>Pertanyaan Umum</span>
-                    FAQ
-                </div>
+        <!-- ═══════════════════════════════════════════════════════════════════
+             3. SECTION FAQ RINGKAS (PILIHAN OPSIONAL DI BAWAH)
+             ═══════════════════════════════════════════════════════════════════ -->
+        <div class="kontak-faq-wrap">
+            <div class="kontak-faq-header">
+                <h3>Pertanyaan yang Sering Diajukan</h3>
+                <p>Temukan jawaban cepat atas pertanyaan umum seputar platform donasi SIBERASA.</p>
             </div>
-            <div style="max-width:700px;margin:0 auto;">
+
+            <div class="kontak-faq-list">
                 <?php
                 $faqs = [
-                    ['q'=>'Bagaimana cara memastikan donasi saya aman?','a'=>'Setiap donasi di SIBERASA dijamin keamanannya melalui enkripsi data dan sistem audit keuangan yang transparan. Anda dapat memantau penggunaan dana secara real-time.'],
-                    ['q'=>'Berapa minimal donasi yang bisa dilakukan?','a'=>'Anda dapat berdonasi mulai dari Rp 10.000 saja. Tidak ada batas maksimal donasi.'],
-                    ['q'=>'Bagaimana cara menjadi penyelenggara program?','a'=>'Anda dapat mendaftar sebagai penyelenggara program dengan mengisi formulir pendaftaran dan melengkapi dokumen legalitas organisasi Anda.'],
-                    ['q'=>'Apakah ada biaya administrasi?','a'=>'SIBERASA mengenakan biaya administrasi minimal untuk mendukung operasional platform. Detail biaya dapat dilihat di halaman syarat dan ketentuan.'],
+                    ['q' => 'Bagaimana cara berdonasi di SIBERASA?', 'a' => 'Pilih program donasi yang ingin Anda bantu di halaman Program, tentukan nominal dan metode pembayaran (QRIS, Transfer Bank, atau E-Wallet), lalu unggah bukti pembayaran.'],
+                    ['q' => 'Berapa batas minimal donasi?', 'a' => 'Anda dapat berdonasi mulai dari nominal Rp 10.000 melalui berbagai metode pembayaran yang tersedia.'],
+                    ['q' => 'Bagaimana jika saya ingin mengajukan program penggalangan dana?', 'a' => 'Anda dapat mendaftar sebagai pengusul program melalui menu "Daftar", kemudian mengisi formulir pengajuan program serta melampirkan berkas verifikasi.']
                 ];
                 foreach ($faqs as $i => $faq):
                 ?>
-                <div style="background:white;border-radius:var(--radius-md);margin-bottom:12px;box-shadow:var(--shadow-sm);border:1px solid var(--border);overflow:hidden;">
-                    <button onclick="toggleFaq(<?= $i ?>)" 
-                            style="width:100%;padding:18px 20px;text-align:left;background:none;border:none;font-family:'Poppins',sans-serif;font-size:0.9rem;font-weight:600;color:var(--text-dark);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;">
-                        <?= $faq['q'] ?>
-                        <i id="faq-icon-<?= $i ?>" class="fas fa-plus" style="color:var(--primary);font-size:0.85rem;flex-shrink:0;transition:transform 0.3s;"></i>
+                <div class="kontak-faq-item">
+                    <button type="button" class="kontak-faq-btn" onclick="toggleFaqItem(<?= $i ?>)">
+                        <span><?= htmlspecialchars($faq['q']) ?></span>
+                        <i id="faq-icon-<?= $i ?>" class="fas fa-chevron-down" style="color:#1a73e8; font-size:0.85rem; transition:transform 0.25s;"></i>
                     </button>
-                    <div id="faq-<?= $i ?>" style="display:none;padding:0 20px 18px;">
-                        <p style="color:var(--text-medium);font-size:0.87rem;line-height:1.7;"><?= $faq['a'] ?></p>
+                    <div id="faq-body-<?= $i ?>" class="kontak-faq-body">
+                        <p style="margin:0;"><?= htmlspecialchars($faq['a']) ?></p>
                     </div>
                 </div>
                 <?php endforeach; ?>
             </div>
         </div>
-    </div>
-</section>
 
-<!-- FOOTER -->
-<footer class="footer">
-    <div class="container">
-        <div class="footer-grid">
-            <div class="footer-brand">
-                <a href="/Donasi/" class="nav-logo"><img src="/logo%20donasi.png" alt="SIBERASA" style="filter:brightness(0)invert(1);"></a>
-                <p>Platform donasi online terpercaya di Indonesia.</p>
-                <div class="footer-socials">
-                    <a href="#" class="social-btn"><i class="fab fa-instagram"></i></a>
-                    <a href="#" class="social-btn"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#" class="social-btn"><i class="fab fa-whatsapp"></i></a>
-                </div>
-            </div>
-            <div class="footer-col"><h5>Navigasi</h5><ul><li><a href="/Donasi/">Beranda</a></li><li><a href="program.php">Program</a></li><li><a href="tentang.php">Tentang</a></li><li><a href="kontak.php">Kontak</a></li></ul></div>
-            <div class="footer-col"><h5>Kategori</h5><ul><li><a href="#">Pendidikan</a></li><li><a href="#">Sosial</a></li><li><a href="#">Kemanusiaan</a></li><li><a href="#">Kesehatan</a></li></ul></div>
-            <div class="footer-col"><h5>Kontak</h5><div class="footer-contact-item"><i class="fas fa-envelope"></i><span>info@siberasa.id</span></div><div class="footer-contact-item"><i class="fas fa-phone"></i><span>+62 21 1234 5678</span></div></div>
-        </div>
-    </div>
-    <div class="container"><div class="footer-bottom"><p>&copy; <?= date('Y') ?> SIBERASA.</p></div></div>
-</footer>
+    </section>
+
+</div>
 
 <script>
-function toggleFaq(i) {
-    const content = document.getElementById('faq-' + i);
+function toggleFaqItem(i) {
+    const body = document.getElementById('faq-body-' + i);
     const icon = document.getElementById('faq-icon-' + i);
-    const isOpen = content.style.display !== 'none';
-    content.style.display = isOpen ? 'none' : 'block';
-    icon.style.transform = isOpen ? '' : 'rotate(45deg)';
+    const isOpen = body.style.display === 'block';
+    
+    body.style.display = isOpen ? 'none' : 'block';
+    icon.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
 }
 </script>
 

@@ -3,6 +3,19 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Handle AJAX update metode jika pengguna ganti metode pembayaran
+if (isset($_POST['action']) && $_POST['action'] === 'update_metode') {
+    if (isset($_POST['metode'])) {
+        if (!isset($_SESSION['pembayaran_data'])) {
+            $_SESSION['pembayaran_data'] = [];
+        }
+        $_SESSION['pembayaran_data']['metode'] = trim($_POST['metode']);
+    }
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'success']);
+    exit;
+}
+
 require_once __DIR__ . '/../assets/config/database.php';
 
 // Ambil data dari GET atau dari SESSION
@@ -16,10 +29,17 @@ if (isset($_GET['id'])) {
     $pesan = isset($_GET['pesan']) ? trim($_GET['pesan']) : '';
     $anonim = isset($_GET['anonim']) ? (int)$_GET['anonim'] : 0;
 
+    $metodeFormatted = 'QRIS';
+    if (strpos($rawMetode, 'transfer') !== false || strpos($rawMetode, 'bank') !== false) {
+        $metodeFormatted = 'Transfer Bank';
+    } elseif (strpos($rawMetode, 'ewallet') !== false || strpos($rawMetode, 'wallet') !== false) {
+        $metodeFormatted = 'E-Wallet';
+    }
+
     $_SESSION['pembayaran_data'] = [
         'id' => $id,
         'nominal' => $nominal,
-        'metode' => $rawMetode,
+        'metode' => $metodeFormatted,
         'nama' => $nama,
         'email' => $email,
         'telepon' => $telepon,
@@ -528,128 +548,308 @@ require_once __DIR__ . '/../includes/header.php';
   margin: 0;
 }
 
-/* TAB 2 & 3: TRANSFER & EWALLET CONTENT */
+/* TAB 1: QRIS CONTENT */
+.qris-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.qris-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px 16px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.qris-logo-header {
+  font-weight: 800;
+  font-size: 1.2rem;
+  letter-spacing: -0.5px;
+  color: #0f172a;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.qris-logo-header span {
+  color: #ef4444;
+}
+
+.qris-image-wrap {
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  padding: 12px;
+  display: inline-block;
+  margin-bottom: 10px;
+}
+
+.qris-image-wrap img, .qris-image-wrap svg {
+  display: block;
+  width: 170px;
+  height: 170px;
+  margin: 0 auto;
+}
+
+.qris-caption {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.qris-right-info {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── TAB 2 & 3: MODERN TRANSFER & E-WALLET LAYOUT ── */
+.transfer-flow-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 .bank-list-wrap {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.bank-item-box {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.bank-info-left {
-  display: flex;
-  align-items: center;
   gap: 14px;
 }
 
-.bank-badge {
+.bank-card-modern {
   background: #ffffff;
-  border: 1px solid #cbd5e1;
-  color: #0284c7;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  transition: all 0.2s ease;
+  border-left: 4px solid #0284c7;
+}
+
+.bank-card-modern:hover {
+  border-color: #cbd5e1;
+  border-left-color: #0369a1;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.08);
+}
+
+.bank-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.bank-brand-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bank-badge {
+  background: #0284c7;
+  color: #ffffff;
   font-weight: 800;
-  font-size: 0.85rem;
-  padding: 6px 12px;
-  border-radius: 8px;
+  font-size: 0.82rem;
+  padding: 4px 12px;
+  border-radius: 6px;
   letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: inline-block;
 }
 
-.bank-acc-num {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #0f172a;
-  letter-spacing: 0.5px;
-}
-
-.bank-acc-holder {
+.bank-type-pill {
   font-size: 0.75rem;
   color: #64748b;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.bank-owner-pill {
+  font-size: 0.8rem;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bank-owner-pill i {
+  color: #0284c7;
+}
+
+.bank-card-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.bank-number-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bank-number-label {
+  font-size: 0.74rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.bank-number-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: 1.5px;
+  font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
+  line-height: 1.2;
 }
 
 .btn-copy-num {
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
   color: #0284c7;
-  padding: 6px 14px;
+  padding: 8px 16px;
   border-radius: 8px;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .btn-copy-num:hover {
-  background: #e0f2fe;
+  background: #0284c7;
   border-color: #0284c7;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.2);
 }
 
-/* INFO DONASI & PETUNJUK */
-.info-donasi-group {
-  margin-bottom: 20px;
+/* NOMINAL HIGHLIGHT BOX */
+.nominal-highlight-box {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  border: 1px solid #bbf7d0;
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
 }
 
-.info-donasi-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin-bottom: 12px;
+.nominal-highlight-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.info-donasi-table {
-  width: 100%;
-  border-collapse: collapse;
+.nominal-highlight-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #166534;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.info-donasi-table tr td {
-  padding: 6px 0;
-  font-size: 0.88rem;
+.nominal-highlight-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #15803d;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
 }
 
-.info-donasi-table tr td:first-child {
-  color: #64748b;
-  width: 50%;
+.nominal-highlight-hint {
+  font-size: 0.75rem;
+  color: #166534;
+  opacity: 0.9;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
 }
 
-.info-donasi-table tr td:last-child {
-  color: #0f172a;
-  font-weight: 700;
-  text-align: right;
+.btn-copy-nominal {
+  background: #ffffff;
+  border: 1px solid #86efac;
+  color: #166534;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
+.btn-copy-nominal:hover {
+  background: #15803d;
+  border-color: #15803d;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(21, 128, 61, 0.2);
+}
+
+/* PETUNJUK PEMBAYARAN BOX */
 .petunjuk-box {
-  background: #f0f7ff;
-  border: 1px solid #dbeafe;
-  border-radius: 12px;
-  padding: 16px 18px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px 20px;
 }
 
 .petunjuk-header {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 700;
   color: #0284c7;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .petunjuk-list {
   margin: 0;
-  padding-left: 18px;
-  font-size: 0.78rem;
+  padding-left: 20px;
+  font-size: 0.82rem;
   color: #475569;
-  line-height: 1.7;
+  line-height: 1.75;
+}
+
+.petunjuk-list li {
+  margin-bottom: 4px;
+}
+
+.petunjuk-list li:last-child {
+  margin-bottom: 0;
+}
+
+.petunjuk-list strong {
+  color: #0f172a;
 }
 
 .pembayaran-footer-note {
@@ -1000,7 +1200,7 @@ require_once __DIR__ . '/../includes/header.php';
                             <div class="qris-layout">
                                 <div class="qris-card">
                                     <div class="qris-logo-header">
-                                        'QRIS<span>,</span>
+                                        QRIS<span>.</span>
                                     </div>
                                     <div class="qris-image-wrap">
                                         <?php if (!empty($qrisPath)): ?>
@@ -1010,35 +1210,28 @@ require_once __DIR__ . '/../includes/header.php';
                                             <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=SIBERASA-PROGRAM-<?= $prog['id'] ?>-<?= urlencode($qrisOwner) ?>-<?= $nominal ?>" alt="QR Code QRIS" onerror="this.src='/Donasi/assets/img/logo_donasi.png'">
                                         <?php endif; ?>
                                     </div>
-                                    <p class="qris-caption">Scan QR di atas untuk melakukan pembayaran</p>
+                                    <p class="qris-caption">Scan QR di atas menggunakan m-Banking atau E-Wallet yang mendukung QRIS</p>
                                 </div>
 
                                 <div class="qris-right-info">
-                                    <div class="info-donasi-group">
-                                        <div class="info-donasi-title">Informasi Donasi</div>
-                                        <table class="info-donasi-table">
-                                            <tr>
-                                                <td>Penerima Donasi</td>
-                                                <td><?= htmlspecialchars($qrisOwner) ?></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Nominal Donasi</td>
-                                                <td><?= formatRupiah($nominal) ?></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Metode Pembayaran</td>
-                                                <td>QRIS</td>
-                                            </tr>
-                                        </table>
+                                    <div class="nominal-highlight-box" style="margin-bottom: 16px;">
+                                        <div class="nominal-highlight-left">
+                                            <span class="nominal-highlight-label">Jumlah Donasi</span>
+                                            <div class="nominal-highlight-val"><?= formatRupiah($nominal) ?></div>
+                                            <span class="nominal-highlight-hint"><i class="fas fa-user-check"></i> Penerima: <strong><?= htmlspecialchars($qrisOwner) ?></strong></span>
+                                        </div>
+                                        <button type="button" class="btn-copy-nominal" onclick="salinTeks('<?= $nominal ?>', 'Nominal Donasi')">
+                                            <i class="far fa-copy"></i> Salin
+                                        </button>
                                     </div>
 
                                     <div class="petunjuk-box">
                                         <div class="petunjuk-header">
-                                            <i class="fas fa-info-circle"></i> Petunjuk Pembayaran
+                                            <i class="fas fa-info-circle"></i> Petunjuk Pembayaran QRIS
                                         </div>
                                         <ol class="petunjuk-list">
-                                            <li>Buka aplikasi mobile banking atau e-wallet yang mendukung QRIS.</li>
-                                            <li>Scan kode QR yang ditampilkan di samping.</li>
+                                            <li>Buka aplikasi m-Banking atau e-wallet pilihan Anda (BCA, Mandiri, GoPay, OVO, DANA, dll).</li>
+                                            <li>Pilih menu <strong>Scan / Bayar QRIS</strong> dan arahkan kamera ke kode QR di samping.</li>
                                             <li>Pastikan nama penerima donasi adalah <strong><?= htmlspecialchars($qrisOwner) ?></strong>.</li>
                                             <li>Periksa nominal dan selesaikan pembayaran.</li>
                                             <li>Kembali ke SIBERASA untuk mengunggah bukti pembayaran.</li>
@@ -1050,7 +1243,7 @@ require_once __DIR__ . '/../includes/header.php';
 
                         <!-- ── 2. KONTEN TRANSFER BANK (DARI DATABASE PENGUSUL) ── -->
                         <div id="contentTransfer" style="<?= ($metodeAktif === 'transfer') ? '' : 'display:none;' ?>">
-                            <div class="qris-layout">
+                            <div class="transfer-flow-layout">
                                 <div class="bank-list-wrap">
                                     <?php if (!empty($akunBank)): ?>
                                         <?php foreach ($akunBank as $ak): 
@@ -1058,76 +1251,85 @@ require_once __DIR__ . '/../includes/header.php';
                                             $nomor = trim($ak['nomor_tujuan']);
                                             $pemilik = trim($ak['nama_pemilik'] ?: $prog['penyelenggara']);
                                         ?>
-                                        <div class="bank-item-box">
-                                            <div class="bank-info-left">
-                                                <span class="bank-badge"><?= htmlspecialchars($penyedia) ?></span>
-                                                <div>
-                                                    <div class="bank-acc-num"><?= htmlspecialchars($nomor) ?></div>
-                                                    <div class="bank-acc-holder">a.n. <?= htmlspecialchars($pemilik) ?></div>
+                                        <div class="bank-card-modern">
+                                            <div class="bank-card-header">
+                                                <div class="bank-brand-info">
+                                                    <span class="bank-badge"><?= htmlspecialchars($penyedia) ?></span>
+                                                    <span class="bank-type-pill"><i class="fas fa-university"></i> Transfer Bank</span>
+                                                </div>
+                                                <div class="bank-owner-pill">
+                                                    <i class="fas fa-user-check"></i> a.n. <strong><?= htmlspecialchars($pemilik) ?></strong>
                                                 </div>
                                             </div>
-                                            <button type="button" class="btn-copy-num" onclick="salinTeks('<?= htmlspecialchars($nomor) ?>', 'No. Rekening <?= htmlspecialchars($penyedia) ?>')">
-                                                <i class="far fa-copy"></i> Salin
-                                            </button>
+                                            <div class="bank-card-body">
+                                                <div class="bank-number-info">
+                                                    <span class="bank-number-label">Nomor Rekening Tujuan</span>
+                                                    <div class="bank-number-val"><?= htmlspecialchars($nomor) ?></div>
+                                                </div>
+                                                <button type="button" class="btn-copy-num" onclick="salinTeks('<?= htmlspecialchars($nomor) ?>', 'No. Rekening <?= htmlspecialchars($penyedia) ?>')">
+                                                    <i class="far fa-copy"></i> Salin Nomor
+                                                </button>
+                                            </div>
                                         </div>
                                         <?php endforeach; ?>
                                     <?php else: ?>
-                                        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:12px 14px; font-size:0.82rem; color:#991b1b; line-height:1.5;">
+                                        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:12px; padding:12px 16px; font-size:0.84rem; color:#991b1b; line-height:1.5;">
                                             <i class="fas fa-info-circle"></i> Pengusul tidak mendaftarkan nomor rekening bank khusus. Anda dapat menggunakan akun <strong>E-Wallet</strong> pengusul atau rekening resmi SIBERASA:
                                         </div>
-                                        <div class="bank-item-box">
-                                            <div class="bank-info-left">
-                                                <span class="bank-badge">BCA</span>
-                                                <div>
-                                                    <div class="bank-acc-num">8930 1289 4410</div>
-                                                    <div class="bank-acc-holder">a.n. SIBERASA Peduli</div>
+                                        <div class="bank-card-modern">
+                                            <div class="bank-card-header">
+                                                <div class="bank-brand-info">
+                                                    <span class="bank-badge">BCA</span>
+                                                    <span class="bank-type-pill"><i class="fas fa-university"></i> Rekening Resmi SIBERASA</span>
+                                                </div>
+                                                <div class="bank-owner-pill">
+                                                    <i class="fas fa-user-check"></i> a.n. <strong>SIBERASA Peduli</strong>
                                                 </div>
                                             </div>
-                                            <button type="button" class="btn-copy-num" onclick="salinTeks('893012894410', 'No. Rekening BCA')">
-                                                <i class="far fa-copy"></i> Salin
-                                            </button>
+                                            <div class="bank-card-body">
+                                                <div class="bank-number-info">
+                                                    <span class="bank-number-label">Nomor Rekening Tujuan</span>
+                                                    <div class="bank-number-val">8930 1289 4410</div>
+                                                </div>
+                                                <button type="button" class="btn-copy-num" onclick="salinTeks('893012894410', 'No. Rekening BCA')">
+                                                    <i class="far fa-copy"></i> Salin Nomor
+                                                </button>
+                                            </div>
                                         </div>
                                     <?php endif; ?>
                                 </div>
 
-                                <div class="qris-right-info">
-                                    <div class="info-donasi-group">
-                                        <div class="info-donasi-title">Informasi Donasi</div>
-                                        <table class="info-donasi-table">
-                                            <tr>
-                                                <td>Penerima Donasi</td>
-                                                <td><?= htmlspecialchars(!empty($akunBank) ? ($akunBank[0]['nama_pemilik'] ?: $prog['penyelenggara']) : $prog['penyelenggara']) ?></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Nominal Donasi</td>
-                                                <td><?= formatRupiah($nominal) ?></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Metode Pembayaran</td>
-                                                <td>Transfer Bank</td>
-                                            </tr>
-                                        </table>
+                                <!-- KARTU NOMINAL TRANSFER -->
+                                <div class="nominal-highlight-box">
+                                    <div class="nominal-highlight-left">
+                                        <span class="nominal-highlight-label">Jumlah Yang Harus Ditransfer</span>
+                                        <div class="nominal-highlight-val"><?= formatRupiah($nominal) ?></div>
+                                        <span class="nominal-highlight-hint"><i class="fas fa-shield-alt"></i> Pastikan nominal transfer sesuai hingga digit terakhir</span>
                                     </div>
+                                    <button type="button" class="btn-copy-nominal" onclick="salinTeks('<?= $nominal ?>', 'Nominal Donasi')">
+                                        <i class="far fa-copy"></i> Salin Nominal
+                                    </button>
+                                </div>
 
-                                    <div class="petunjuk-box">
-                                        <div class="petunjuk-header">
-                                            <i class="fas fa-info-circle"></i> Petunjuk Pembayaran
-                                        </div>
-                                        <ol class="petunjuk-list">
-                                            <li>Buka m-Banking atau kunjungi ATM bank pilihan Anda.</li>
-                                            <li>Pilih menu Transfer ke rekening tujuan pengusul di samping.</li>
-                                            <li>Pastikan nama pemilik rekening adalah <strong><?= htmlspecialchars(!empty($akunBank) ? ($akunBank[0]['nama_pemilik'] ?: $prog['penyelenggara']) : 'SIBERASA Peduli') ?></strong>.</li>
-                                            <li>Masukkan nominal tepat sebesar <strong><?= formatRupiah($nominal) ?></strong>.</li>
-                                            <li>Simpan bukti transfer untuk diunggah di tahap berikutnya.</li>
-                                        </ol>
+                                <!-- PETUNJUK PEMBAYARAN -->
+                                <div class="petunjuk-box">
+                                    <div class="petunjuk-header">
+                                        <i class="fas fa-list-ol"></i> Petunjuk Pembayaran Transfer Bank
                                     </div>
+                                    <ol class="petunjuk-list">
+                                        <li>Buka aplikasi m-Banking atau kunjungi ATM bank pilihan Anda.</li>
+                                        <li>Pilih menu <strong>Transfer</strong> &gt; Masukkan nomor rekening tujuan di atas.</li>
+                                        <li>Pastikan nama pemilik rekening adalah <strong><?= htmlspecialchars(!empty($akunBank) ? ($akunBank[0]['nama_pemilik'] ?: $prog['penyelenggara']) : 'SIBERASA Peduli') ?></strong>.</li>
+                                        <li>Masukkan nominal transfer tepat sebesar <strong><?= formatRupiah($nominal) ?></strong>.</li>
+                                        <li>Simpan bukti transfer untuk diunggah pada halaman berikutnya.</li>
+                                    </ol>
                                 </div>
                             </div>
                         </div>
 
                         <!-- ── 3. KONTEN E-WALLET (DARI DATABASE PENGUSUL) ── -->
                         <div id="contentEwallet" style="<?= ($metodeAktif === 'ewallet') ? '' : 'display:none;' ?>">
-                            <div class="qris-layout">
+                            <div class="transfer-flow-layout">
                                 <div class="bank-list-wrap">
                                     <?php if (!empty($akunEwallet)): ?>
                                         <?php foreach ($akunEwallet as $ak): 
@@ -1135,69 +1337,78 @@ require_once __DIR__ . '/../includes/header.php';
                                             $nomor = trim($ak['nomor_tujuan']);
                                             $pemilik = trim($ak['nama_pemilik'] ?: $prog['penyelenggara']);
                                         ?>
-                                        <div class="bank-item-box">
-                                            <div class="bank-info-left">
-                                                <span class="bank-badge"><?= htmlspecialchars($penyedia) ?></span>
-                                                <div>
-                                                    <div class="bank-acc-num"><?= htmlspecialchars($nomor) ?></div>
-                                                    <div class="bank-acc-holder">a.n. <?= htmlspecialchars($pemilik) ?></div>
+                                        <div class="bank-card-modern">
+                                            <div class="bank-card-header">
+                                                <div class="bank-brand-info">
+                                                    <span class="bank-badge"><?= htmlspecialchars($penyedia) ?></span>
+                                                    <span class="bank-type-pill"><i class="fas fa-wallet"></i> E-Wallet</span>
+                                                </div>
+                                                <div class="bank-owner-pill">
+                                                    <i class="fas fa-user-check"></i> a.n. <strong><?= htmlspecialchars($pemilik) ?></strong>
                                                 </div>
                                             </div>
-                                            <button type="button" class="btn-copy-num" onclick="salinTeks('<?= htmlspecialchars($nomor) ?>', 'No. <?= htmlspecialchars($penyedia) ?>')">
-                                                <i class="far fa-copy"></i> Salin
-                                            </button>
+                                            <div class="bank-card-body">
+                                                <div class="bank-number-info">
+                                                    <span class="bank-number-label">Nomor Akun / Handphone</span>
+                                                    <div class="bank-number-val"><?= htmlspecialchars($nomor) ?></div>
+                                                </div>
+                                                <button type="button" class="btn-copy-num" onclick="salinTeks('<?= htmlspecialchars($nomor) ?>', 'No. <?= htmlspecialchars($penyedia) ?>')">
+                                                    <i class="far fa-copy"></i> Salin Nomor
+                                                </button>
+                                            </div>
                                         </div>
                                         <?php endforeach; ?>
                                     <?php else: ?>
-                                        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:12px 14px; font-size:0.82rem; color:#991b1b; line-height:1.5;">
+                                        <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:12px; padding:12px 16px; font-size:0.84rem; color:#991b1b; line-height:1.5;">
                                             <i class="fas fa-info-circle"></i> Pengusul tidak mendaftarkan akun E-Wallet khusus. Anda dapat menggunakan metode <strong>Transfer Bank</strong> pengusul atau akun resmi SIBERASA:
                                         </div>
-                                        <div class="bank-item-box">
-                                            <div class="bank-info-left">
-                                                <span class="bank-badge">DANA</span>
-                                                <div>
-                                                    <div class="bank-acc-num">0812 3456 7890</div>
-                                                    <div class="bank-acc-holder">a.n. SIBERASA Peduli</div>
+                                        <div class="bank-card-modern">
+                                            <div class="bank-card-header">
+                                                <div class="bank-brand-info">
+                                                    <span class="bank-badge">DANA</span>
+                                                    <span class="bank-type-pill"><i class="fas fa-wallet"></i> E-Wallet Resmi</span>
+                                                </div>
+                                                <div class="bank-owner-pill">
+                                                    <i class="fas fa-user-check"></i> a.n. <strong>SIBERASA Peduli</strong>
                                                 </div>
                                             </div>
-                                            <button type="button" class="btn-copy-num" onclick="salinTeks('081234567890', 'No. DANA')">
-                                                <i class="far fa-copy"></i> Salin
-                                            </button>
+                                            <div class="bank-card-body">
+                                                <div class="bank-number-info">
+                                                    <span class="bank-number-label">Nomor Akun / Handphone</span>
+                                                    <div class="bank-number-val">0812 3456 7890</div>
+                                                </div>
+                                                <button type="button" class="btn-copy-num" onclick="salinTeks('081234567890', 'No. DANA')">
+                                                    <i class="far fa-copy"></i> Salin Nomor
+                                                </button>
+                                            </div>
                                         </div>
                                     <?php endif; ?>
                                 </div>
 
-                                <div class="qris-right-info">
-                                    <div class="info-donasi-group">
-                                        <div class="info-donasi-title">Informasi Donasi</div>
-                                        <table class="info-donasi-table">
-                                            <tr>
-                                                <td>Penerima Donasi</td>
-                                                <td><?= htmlspecialchars(!empty($akunEwallet) ? ($akunEwallet[0]['nama_pemilik'] ?: $prog['penyelenggara']) : $prog['penyelenggara']) ?></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Nominal Donasi</td>
-                                                <td><?= formatRupiah($nominal) ?></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Metode Pembayaran</td>
-                                                <td>E-Wallet</td>
-                                            </tr>
-                                        </table>
+                                <!-- KARTU NOMINAL TRANSFER -->
+                                <div class="nominal-highlight-box">
+                                    <div class="nominal-highlight-left">
+                                        <span class="nominal-highlight-label">Jumlah Yang Harus Ditransfer</span>
+                                        <div class="nominal-highlight-val"><?= formatRupiah($nominal) ?></div>
+                                        <span class="nominal-highlight-hint"><i class="fas fa-shield-alt"></i> Pastikan nominal transfer sesuai persis</span>
                                     </div>
+                                    <button type="button" class="btn-copy-nominal" onclick="salinTeks('<?= $nominal ?>', 'Nominal Donasi')">
+                                        <i class="far fa-copy"></i> Salin Nominal
+                                    </button>
+                                </div>
 
-                                    <div class="petunjuk-box">
-                                        <div class="petunjuk-header">
-                                            <i class="fas fa-info-circle"></i> Petunjuk Pembayaran
-                                        </div>
-                                        <ol class="petunjuk-list">
-                                            <li>Buka aplikasi e-wallet pilihan Anda (GoPay, OVO, DANA, ShopeePay).</li>
-                                            <li>Kirim saldo ke nomor tujuan e-wallet pengusul di samping.</li>
-                                            <li>Pastikan nama akun penerima adalah <strong><?= htmlspecialchars(!empty($akunEwallet) ? ($akunEwallet[0]['nama_pemilik'] ?: $prog['penyelenggara']) : 'SIBERASA Peduli') ?></strong>.</li>
-                                            <li>Lakukan tangkapan layar (screenshot) bukti transfer.</li>
-                                            <li>Lanjutkan ke halaman upload bukti pembayaran.</li>
-                                        </ol>
+                                <!-- PETUNJUK PEMBAYARAN -->
+                                <div class="petunjuk-box">
+                                    <div class="petunjuk-header">
+                                        <i class="fas fa-list-ol"></i> Petunjuk Pembayaran E-Wallet
                                     </div>
+                                    <ol class="petunjuk-list">
+                                        <li>Buka aplikasi e-wallet pilihan Anda (GoPay, OVO, DANA, ShopeePay, dll).</li>
+                                        <li>Kirim saldo ke nomor tujuan e-wallet di atas.</li>
+                                        <li>Pastikan nama akun penerima adalah <strong><?= htmlspecialchars(!empty($akunEwallet) ? ($akunEwallet[0]['nama_pemilik'] ?: $prog['penyelenggara']) : 'SIBERASA Peduli') ?></strong>.</li>
+                                        <li>Masukkan nominal tepat sebesar <strong><?= formatRupiah($nominal) ?></strong>.</li>
+                                        <li>Simpan tangkapan layar (screenshot) bukti transfer untuk diunggah di tahap berikutnya.</li>
+                                    </ol>
                                 </div>
                             </div>
                         </div>
@@ -1250,7 +1461,7 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
                     </div>
 
-                    <a href="upload_bukti.php?id=<?= $prog['id'] ?>&nominal=<?= $nominal ?>&metode=<?= urlencode(($metodeAktif === 'transfer') ? 'Transfer Bank' : (($metodeAktif === 'ewallet') ? 'E-Wallet' : 'QRIS')) ?>" id="btnUploadBukti" class="btn-upload-bukti-cta">
+                    <a href="upload_bukti.php" id="btnUploadBukti" class="btn-upload-bukti-cta">
                         <i class="fas fa-cloud-arrow-up"></i> Upload Bukti Pembayaran <i class="fas fa-arrow-right" style="font-size:0.85rem;"></i>
                     </a>
 
@@ -1326,7 +1537,18 @@ function switchMetode(metode) {
     }
 
     if (labelMetode) labelMetode.textContent = metodeName;
-    if (btnUploadBukti) btnUploadBukti.href = `upload_bukti.php?id=${programId}&nominal=${nominalDonasi}&metode=${encodeURIComponent(metodeName)}`;
+    if (btnUploadBukti) btnUploadBukti.href = 'upload_bukti.php';
+
+    // Update metode ke session secara asynchronous
+    if (navigator.sendBeacon) {
+        navigator.sendBeacon('pembayaran.php', new URLSearchParams({ action: 'update_metode', metode: metodeName }));
+    } else {
+        fetch('pembayaran.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=update_metode&metode=' + encodeURIComponent(metodeName)
+        }).catch(() => {});
+    }
 }
 
 function salinTeks(text, label) {
