@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once __DIR__ . '/../assets/config/database.php';
 
@@ -892,7 +892,7 @@ ul { list-style: none; }
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="sidebar-logo">
-      <img src="/logo%20donasi.png" 
+      <img src="/Donasi/assets/img/logo_donasi.png" 
            alt="SIBERASA Logo" 
            class="sidebar-logo-img" 
            onerror="this.src='/Donasi/assets/img/logo.png'">

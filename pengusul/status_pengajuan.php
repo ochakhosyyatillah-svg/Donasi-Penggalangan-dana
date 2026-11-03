@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once __DIR__ . '/../assets/config/database.php';
 
@@ -1002,7 +1002,7 @@ function getPhotoUrl($filename) {
         <!-- Logo Brand & Tombol Toggle -->
         <div class="sidebar-brand">
           <a href="/Donasi/pengusul/dashboard.php" class="brand-logo">
-            <img src="/logo%20donasi.png" alt="SIBERASA Logo" onerror="this.src='../assets/img/logo_donasi.png'">
+            <img src="/Donasi/assets/img/logo_donasi.png" alt="SIBERASA Logo" onerror="this.src='../assets/img/logo_donasi.png'">
           </a>
           <button id="sidebarToggle" class="sidebar-toggle-btn" title="Toggle Menu">
             <i class="fa-solid fa-bars"></i>

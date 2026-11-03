@@ -4,7 +4,7 @@
         <div class="footer-new-grid">
             <div class="footer-new-brand">
                 <a href="/Donasi/" class="nav-logo">
-                    <img src="/logo%20donasi.png" alt="SIBERASA" style="height: 48px;">
+                    <img src="/Donasi/assets/img/logo_donasi.png" alt="SIBERASA" style="height: 48px;">
                 </a>
                 <p class="brand-desc">Bersama kita wujudkan kebaikan,<br>untuk membantu sesama dan<br>membangun masa depan yang lebih baik.</p>
                 <div class="footer-new-socials">
@@ -77,7 +77,7 @@
         <button class="modal-close" onclick="closeModal()" aria-label="Tutup"><i class="fas fa-times"></i></button>
 
         <div class="modal-logo">
-            <img src="/logo%20donasi.png" alt="SIBERASA" onerror="this.src='/Donasi/assets/img/logo_donasi.png'">
+            <img src="/Donasi/assets/img/logo_donasi.png" alt="SIBERASA">
             <h3 id="modalTitle">Masuk ke SIBERASA</h3>
             <p id="modalSubtitle">Bergabung dan mulai berdonasi</p>
         </div>

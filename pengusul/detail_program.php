@@ -8,12 +8,26 @@ if (!isset($_SESSION['id_user']) || $_SESSION['role'] !== 'pengusul') {
 }
 
 $idUser    = (int) $_SESSION['id_user'];
-$idProgram = (int) ($_GET['id'] ?? 0);
+$idProgram = (int) ($_POST['id'] ?? ($_GET['id'] ?? ($_SESSION['active_detail_program_id'] ?? 0)));
+
+// Jika belum ada ID, ambil program donasi terbaru milik pengusul
+if ($idProgram <= 0) {
+    try {
+        $stmtLatest = $pdo->prepare("SELECT id_program FROM program_donasi WHERE id_pengusul = ? ORDER BY id_program DESC LIMIT 1");
+        $stmtLatest->execute([$idUser]);
+        $idProgram = (int) ($stmtLatest->fetchColumn() ?: 0);
+    } catch (PDOException $e) {
+        $idProgram = 0;
+    }
+}
 
 if ($idProgram <= 0) {
     header('Location: /Donasi/pengusul/status_pengajuan.php');
     exit;
 }
+
+// Simpan program aktif ke session
+$_SESSION['active_detail_program_id'] = $idProgram;
 
 // Ambil profil user
 try {
@@ -326,7 +340,7 @@ $tglBuat    = !empty($prog['dibuat_pada'])      ? date('d M Y', strtotime($prog[
         <!-- Logo Brand & Tombol Toggle -->
         <div class="sidebar-brand">
           <a href="/Donasi/pengusul/dashboard.php" class="brand-logo">
-            <img src="/logo%20donasi.png" alt="SIBERASA Logo" onerror="this.src='../assets/img/logo_donasi.png'">
+            <img src="/Donasi/assets/img/logo_donasi.png" alt="SIBERASA Logo" onerror="this.src='../assets/img/logo_donasi.png'">
           </a>
           <button id="sidebarToggle" class="sidebar-toggle-btn" title="Toggle Menu">
             <i class="fa-solid fa-bars"></i>
@@ -617,6 +631,11 @@ $tglBuat    = !empty($prog['dibuat_pada'])      ? date('d M Y', strtotime($prog[
   </div>
 
   <script>
+    // Bersihkan parameter ?id=... dari address bar browser agar URL tetap http://localhost/Donasi/pengusul/detail_program.php
+    if (window.location.search) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     const sidebar         = document.getElementById('appSidebar');
     const toggleBtn       = document.getElementById('sidebarToggle');
     const mobileToggleBtn = document.getElementById('mobileSidebarToggle');

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once __DIR__ . '/../assets/config/database.php';
 
@@ -957,7 +957,7 @@ function rp($angka) {
         <!-- Logo Brand & Tombol Toggle -->
         <div class="sidebar-brand">
           <a href="/Donasi/pengusul/dashboard.php" class="brand-logo">
-            <img src="/logo%20donasi.png" alt="SIBERASA Logo" onerror="this.src='../assets/img/logo_donasi.png'">
+            <img src="/Donasi/assets/img/logo_donasi.png" alt="SIBERASA Logo" onerror="this.src='../assets/img/logo_donasi.png'">
           </a>
           <button id="sidebarToggle" class="sidebar-toggle-btn" title="Toggle Menu">
             <i class="fa-solid fa-bars"></i>
@@ -1186,9 +1186,9 @@ function rp($angka) {
                           <span class="status-badge <?= $badgeClass ?>"><?= $statusText ?></span>
                         </td>
                         <td>
-                          <button class="btn-detail" onclick="alert('Detail program: <?= addslashes(htmlspecialchars($p['judul'])) ?>\nTarget: <?= rp($target) ?>\nTerkumpul: <?= rp($terkumpul) ?> (<?= $pct ?>%)\nStatus: <?= $statusText ?>')">
+                          <a href="/Donasi/pengusul/detail_program.php?id=<?= (int)$p['id_program'] ?>" class="btn-detail">
                             Lihat Detail
-                          </button>
+                          </a>
                         </td>
                       </tr>
                       <?php endforeach; ?>

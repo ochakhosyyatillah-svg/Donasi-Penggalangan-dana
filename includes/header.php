@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $page_title = $page_title ?? 'SIBERASA - Sistem Donasi dan Penggalangan Dana';
 $page_desc = $page_desc ?? 'SIBERASA adalah platform donasi online terpercaya. Berbagi Rasa, Hadirkan Manfaat.';
 ?>
@@ -26,7 +26,7 @@ $page_desc = $page_desc ?? 'SIBERASA adalah platform donasi online terpercaya. B
     <link rel="stylesheet" href="/Donasi/assets/css/style.css?v=<?= time() ?>">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/logo%20donasi.png">
+    <link rel="icon" type="image/png" href="/Donasi/assets/img/logo_donasi.png">
 </head>
 <body>
 
@@ -36,7 +36,7 @@ $page_desc = $page_desc ?? 'SIBERASA adalah platform donasi online terpercaya. B
         <a href="/Donasi/" class="nav-logo">
             <img src="/Donasi/assets/img/logo_uin.jpg" alt="Logo UIN Siber Syekh Nurjati Cirebon" class="logo-uin">
             <span class="logo-divider"></span>
-            <img src="/logo%20donasi.png" alt="SIBERASA Logo" onerror="this.src='/Donasi/assets/img/logo_donasi.png'" class="logo-siberasa">
+            <img src="/Donasi/assets/img/logo_donasi.png" alt="SIBERASA Logo" onerror="this.src='/Donasi/assets/img/logo_donasi.png'" class="logo-siberasa">
         </a>
 
         <ul class="nav-links" id="navLinks">

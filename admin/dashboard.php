@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -757,7 +757,7 @@ ul{list-style:none}
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="sidebar-logo">
-      <img src="/logo%20donasi.png"
+      <img src="/Donasi/assets/img/logo_donasi.png"
            alt="SIBERASA Logo"
            class="sidebar-logo-img"
            onerror="this.style.display='none'">

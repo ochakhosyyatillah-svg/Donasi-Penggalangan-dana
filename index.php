@@ -310,7 +310,7 @@ img{display:block;max-width:100%}
     <a href="/Donasi/" class="nav-logo">
       <img src="/Donasi/assets/img/logo_uin.jpg" alt="Logo UIN Siber Syekh Nurjati Cirebon" style="height:48px;width:auto;object-fit:contain;">
       <span style="display:inline-block;width:1.5px;height:38px;background:linear-gradient(to bottom,transparent,rgba(0,0,0,.2),transparent);border-radius:2px;flex-shrink:0;"></span>
-      <img src="/logo%20donasi.png" alt="SIBERASA" style="height:44px;width:auto;object-fit:contain;">
+      <img src="/Donasi/assets/img/logo_donasi.png" alt="SIBERASA" style="height:44px;width:auto;object-fit:contain;">
     </a>
 
     <!-- Nav Links -->

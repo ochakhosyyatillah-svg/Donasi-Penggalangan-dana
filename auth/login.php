@@ -1,4 +1,4 @@
-
+﻿
 
 <?php
 session_start();
@@ -450,7 +450,7 @@ body::before{
       <a href="/Donasi/" title="Kembali ke Beranda">
         <img src="/Donasi/assets/img/logo.png"
              alt="SIBERASA Logo"
-             onerror="this.src='/Logo%20Donasi%20login.png'">
+             onerror="this.src='/Donasi/assets/img/logo_donasi.png'">
       </a>
       <h1>Masuk ke Akun</h1>
       <p>Lanjutkan kebaikan Anda bersama SIBERASA</p>
