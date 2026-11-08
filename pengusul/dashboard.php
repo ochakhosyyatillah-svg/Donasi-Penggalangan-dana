@@ -1033,10 +1033,7 @@ function rp($angka) {
       <!-- Top Header Navbar -->
       <header class="top-header">
         <div class="header-right">
-          <div class="notif-btn" title="Pemberitahuan">
-            <i class="fa-regular fa-bell"></i>
-            <span class="notif-badge"></span>
-          </div>
+          <?php include __DIR__ . '/../includes/pengusul_notifikasi.php'; ?>
         </div>
       </header>
 

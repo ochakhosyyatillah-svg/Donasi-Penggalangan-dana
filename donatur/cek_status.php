@@ -15,7 +15,7 @@ function cariStatusByKode($kode, $pdo) {
     // 1. Cek di tabel donasi terlebih dahulu berdasarkan kode tracking
     try {
         $stmtDon = $pdo->prepare("
-            SELECT d.*, p.judul AS nama_program, pb.status_verifikasi, pb.tanggal_pembayaran
+            SELECT d.*, p.judul AS nama_program, pb.status_verifikasi, pb.tanggal_pembayaran, pb.catatan_admin
             FROM donasi d
             JOIN program_donasi p ON d.id_program = p.id_program
             LEFT JOIN pembayaran pb ON d.id_donasi = pb.id_donasi
@@ -30,7 +30,7 @@ function cariStatusByKode($kode, $pdo) {
             $stVerif = $donRow['status_verifikasi'] ?? 'menunggu';
             if ($donRow['status_donasi'] === 'berhasil') {
                 $stVerif = 'diterima';
-            } elseif ($donRow['status_donasi'] === 'ditolak') {
+            } elseif ($donRow['status_donasi'] === 'ditolak' || $donRow['status_donasi'] === 'dibatalkan' || $stVerif === 'ditolak') {
                 $stVerif = 'ditolak';
             }
 
@@ -38,20 +38,38 @@ function cariStatusByKode($kode, $pdo) {
             $statusType = 'warning';
             $tglDonasi = date('d F Y', strtotime($donRow['tanggal_donasi']));
             $tglBayar = !empty($donRow['tanggal_pembayaran']) ? date('d M Y', strtotime($donRow['tanggal_pembayaran'])) : date('d M Y', strtotime($donRow['tanggal_donasi']));
-
-            $steps = [
-                ['name' => 'Donasi Dibuat', 'date' => date('d M Y', strtotime($donRow['tanggal_donasi'])), 'status' => 'done'],
-                ['name' => 'Bukti Pembayaran Diunggah', 'date' => $tglBayar, 'status' => 'done'],
-                ['name' => 'Verifikasi Admin', 'date' => ($stVerif === 'diterima' ? 'Terverifikasi' : ($stVerif === 'ditolak' ? 'Ditolak' : 'Proses')), 'status' => ($stVerif === 'diterima' ? 'done' : 'active')],
-                ['name' => 'Donasi Disalurkan', 'date' => ($stVerif === 'diterima' ? 'Siap Disalurkan' : '-'), 'status' => ($stVerif === 'diterima' ? 'done' : 'pending')]
-            ];
+            $alasanPenolakan = !empty($donRow['catatan_admin']) ? $donRow['catatan_admin'] : 'Bukti pembayaran tidak jelas.';
 
             if ($stVerif === 'diterima') {
                 $statusText = 'Terverifikasi & Selesai';
                 $statusType = 'success';
+                $steps = [
+                    ['name' => 'Donasi Dibuat', 'date' => date('d M Y', strtotime($donRow['tanggal_donasi'])), 'status' => 'done'],
+                    ['name' => 'Bukti Pembayaran Diunggah', 'date' => $tglBayar, 'status' => 'done'],
+                    ['name' => 'Verifikasi Admin', 'date' => 'Terverifikasi', 'status' => 'done'],
+                    ['name' => 'Donasi Disalurkan', 'date' => 'Siap Disalurkan', 'status' => 'done']
+                ];
             } elseif ($stVerif === 'ditolak') {
                 $statusText = 'Ditolak';
                 $statusType = 'danger';
+                $steps = [
+                    ['name' => 'Donasi Dibuat', 'date' => date('d M Y', strtotime($donRow['tanggal_donasi'])), 'status' => 'done'],
+                    ['name' => 'Bukti Pembayaran Diunggah', 'date' => $tglBayar, 'status' => 'done'],
+                    [
+                        'name' => 'Verifikasi Admin', 
+                        'date' => 'Ditolak', 
+                        'status' => 'rejected', 
+                        'reason' => $alasanPenolakan
+                    ],
+                    ['name' => 'Donasi Dibatalkan', 'date' => '-', 'status' => 'pending']
+                ];
+            } else {
+                $steps = [
+                    ['name' => 'Donasi Dibuat', 'date' => date('d M Y', strtotime($donRow['tanggal_donasi'])), 'status' => 'done'],
+                    ['name' => 'Bukti Pembayaran Diunggah', 'date' => $tglBayar, 'status' => 'done'],
+                    ['name' => 'Verifikasi Admin', 'date' => 'Proses', 'status' => 'active'],
+                    ['name' => 'Donasi Disalurkan', 'date' => '-', 'status' => 'pending']
+                ];
             }
 
             return [
@@ -64,6 +82,10 @@ function cariStatusByKode($kode, $pdo) {
                 'tanggal' => $tglDonasi,
                 'statusText' => $statusText,
                 'statusType' => $statusType,
+                'isRejected' => ($stVerif === 'ditolak'),
+                'rejectReason' => ($stVerif === 'ditolak' ? $alasanPenolakan : null),
+                'rejectTitle' => 'Pengajuan Donasi Ditolak',
+                'rejectMessage' => 'Maaf, pengajuan donasi untuk program ini tidak dapat diproses. Terima kasih atas kepedulian Anda.',
                 'infoMessage' => ($stVerif === 'diterima') 
                     ? 'Donasi Anda telah berhasil diverifikasi oleh admin dan berhasil tercatat. Terima kasih atas kepedulian Anda!' 
                     : (($stVerif === 'ditolak') 
@@ -144,11 +166,16 @@ function cariStatusByKode($kode, $pdo) {
             } elseif ($stProg === 'ditolak') {
                 $statusText = 'Ditolak';
                 $statusType = 'danger';
-                $step2 = ['name' => 'Diverifikasi Admin', 'date' => 'Ditolak', 'status' => 'done'];
-                $step3 = ['name' => 'Ditolak', 'date' => 'Tidak Disetujui', 'status' => 'active'];
+                $catatanProg = !empty($progRow['catatan_admin']) ? $progRow['catatan_admin'] : 'Pengajuan program belum memenuhi kriteria verifikasi admin.';
+                $step2 = [
+                    'name' => 'Diverifikasi Admin', 
+                    'date' => 'Ditolak', 
+                    'status' => 'rejected',
+                    'reason' => $catatanProg
+                ];
+                $step3 = ['name' => 'Ditolak', 'date' => 'Tidak Disetujui', 'status' => 'pending'];
                 $step4 = ['name' => 'Program Dibatalkan', 'date' => '-', 'status' => 'pending'];
-                $catatan = !empty($progRow['catatan_admin']) ? '<br><strong>Catatan Admin:</strong> ' . htmlspecialchars($progRow['catatan_admin']) : '';
-                $infoMsg = 'Pengajuan program belum dapat disetujui.' . $catatan;
+                $infoMsg = 'Pengajuan program belum dapat disetujui oleh admin.';
             }
 
             return [
@@ -161,6 +188,10 @@ function cariStatusByKode($kode, $pdo) {
                 'tanggal' => $tglAjukan,
                 'statusText' => $statusText,
                 'statusType' => $statusType,
+                'isRejected' => ($stProg === 'ditolak'),
+                'rejectReason' => ($stProg === 'ditolak' ? ($catatanProg ?? null) : null),
+                'rejectTitle' => 'Pengajuan Program Ditolak',
+                'rejectMessage' => 'Maaf, pengajuan program ini belum dapat disetujui. Terima kasih atas inisiatif Anda.',
                 'infoMessage' => $infoMsg,
                 'stepperTitle' => 'Proses Pengajuan',
                 'steps' => [$step1, $step2, $step3, $step4]
@@ -318,6 +349,17 @@ require_once '../includes/header.php';
                         </div>
                     </div>
 
+                    <!-- Card Alert Ditolak (Merah Muda) -->
+                    <div class="cs-alert-rejected-card" id="csAlertRejected" style="display: none;">
+                        <div class="cs-alert-rejected-icon">
+                            <i class="fas fa-times"></i>
+                        </div>
+                        <div class="cs-alert-rejected-text">
+                            <h4 id="resRejectTitle">Pengajuan Donasi Ditolak</h4>
+                            <p id="resRejectMessage">Maaf, pengajuan donasi untuk program ini tidak dapat diproses. Terima kasih atas kepedulian Anda.</p>
+                        </div>
+                    </div>
+
                     <!-- Card Alert Info -->
                     <div class="cs-info-banner">
                         <div class="cs-info-circle-icon">
@@ -350,6 +392,10 @@ require_once '../includes/header.php';
                                 <div class="cs-step-content">
                                     <h4 class="cs-step-name" id="step1Title">Pengajuan Dikirim</h4>
                                     <span class="cs-step-date" id="step1Date">08 Okt 2026</span>
+                                    <div class="cs-reject-reason-box" id="step1Reason" style="display: none;">
+                                        <strong>Alasan Penolakan:</strong>
+                                        <span class="reason-text"></span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -362,6 +408,10 @@ require_once '../includes/header.php';
                                 <div class="cs-step-content">
                                     <h4 class="cs-step-name" id="step2Title">Sedang Diverifikasi</h4>
                                     <span class="cs-step-date" id="step2Date">-</span>
+                                    <div class="cs-reject-reason-box" id="step2Reason" style="display: none;">
+                                        <strong>Alasan Penolakan:</strong>
+                                        <span class="reason-text"></span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -374,6 +424,10 @@ require_once '../includes/header.php';
                                 <div class="cs-step-content">
                                     <h4 class="cs-step-name" id="step3Title">Disetujui</h4>
                                     <span class="cs-step-date" id="step3Date">-</span>
+                                    <div class="cs-reject-reason-box" id="step3Reason" style="display: none;">
+                                        <strong>Alasan Penolakan:</strong>
+                                        <span class="reason-text"></span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -385,6 +439,10 @@ require_once '../includes/header.php';
                                 <div class="cs-step-content">
                                     <h4 class="cs-step-name" id="step4Title">Program Dipublikasikan</h4>
                                     <span class="cs-step-date" id="step4Date">-</span>
+                                    <div class="cs-reject-reason-box" id="step4Reason" style="display: none;">
+                                        <strong>Alasan Penolakan:</strong>
+                                        <span class="reason-text"></span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -644,7 +702,10 @@ require_once '../includes/header.php';
 
 /* Badge Status */
 .cs-badge {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     padding: 6px 18px;
     border-radius: 8px;
     font-size: 0.86rem;
@@ -671,6 +732,46 @@ require_once '../includes/header.php';
     background-color: #fef2f2;
     border: 1.5px solid #fecaca;
     color: #dc2626;
+}
+
+/* Alert Penolakan Donasi (Merah Muda) */
+.cs-alert-rejected-card {
+    background-color: #fee2e2;
+    border: 1px solid #fecaca;
+    border-radius: 16px;
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.cs-alert-rejected-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #dc2626;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+}
+
+.cs-alert-rejected-text h4 {
+    margin: 0 0 4px 0;
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #dc2626;
+}
+
+.cs-alert-rejected-text p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #991b1b;
+    line-height: 1.5;
 }
 
 /* ── Panel Kiri: Alert Info Banner ── */
@@ -780,6 +881,43 @@ require_once '../includes/header.php';
     background-color: #ffffff;
     border: 2px solid #cbd5e1;
     color: transparent;
+}
+
+/* State 4: Ditolak (Merah Solid) */
+.cs-step-rejected .cs-step-icon {
+    background-color: #dc2626;
+    color: #ffffff;
+    font-size: 11px;
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.15);
+}
+
+.cs-step-rejected .cs-step-date {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.cs-step-line.line-rejected {
+    background-color: #fca5a5;
+}
+
+/* Kotak Alasan Penolakan */
+.cs-reject-reason-box {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background-color: #fef2f2;
+    border: 1px solid #fee2e2;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    color: #991b1b;
+    line-height: 1.45;
+}
+
+.cs-reject-reason-box strong {
+    display: block;
+    color: #b91c1c;
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-bottom: 2px;
 }
 
 /* Konten Teks Step */
@@ -990,11 +1128,29 @@ function renderResult(data) {
 
     // Badge Status
     const badgeEl = document.getElementById('valBadgeStatus');
-    badgeEl.textContent = data.statusText;
     badgeEl.className = 'cs-badge ' + (
         data.statusType === 'success' ? 'cs-badge-success' :
         data.statusType === 'danger' ? 'cs-badge-danger' : 'cs-badge-warning'
     );
+    if (data.statusType === 'danger') {
+        badgeEl.innerHTML = '<i class="fas fa-times-circle"></i> ' + data.statusText;
+    } else if (data.statusType === 'success') {
+        badgeEl.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.statusText;
+    } else {
+        badgeEl.innerHTML = '<i class="fas fa-clock"></i> ' + data.statusText;
+    }
+
+    // Alert Banner Penolakan (Merah)
+    const alertRejected = document.getElementById('csAlertRejected');
+    if (alertRejected) {
+        if (data.isRejected) {
+            alertRejected.style.display = 'flex';
+            if (data.rejectTitle) document.getElementById('resRejectTitle').textContent = data.rejectTitle;
+            if (data.rejectMessage) document.getElementById('resRejectMessage').textContent = data.rejectMessage;
+        } else {
+            alertRejected.style.display = 'none';
+        }
+    }
 
     // Info Message
     document.getElementById('resInfoMessage').innerHTML = data.infoMessage;
@@ -1008,6 +1164,7 @@ function renderResult(data) {
         const nameEl = document.getElementById('step' + i + 'Title');
         const dateEl = document.getElementById('step' + i + 'Date');
         const lineEl = document.getElementById('stepLine' + i);
+        const reasonEl = document.getElementById('step' + i + 'Reason');
 
         if (nameEl) nameEl.textContent = step.name;
         if (dateEl) dateEl.textContent = step.date;
@@ -1018,6 +1175,8 @@ function renderResult(data) {
             if (iconEl) {
                 if (step.status === 'done') {
                     iconEl.innerHTML = '<i class="fas fa-check"></i>';
+                } else if (step.status === 'rejected') {
+                    iconEl.innerHTML = '<i class="fas fa-times"></i>';
                 } else {
                     iconEl.innerHTML = '';
                 }
@@ -1025,7 +1184,17 @@ function renderResult(data) {
         }
 
         if (lineEl) {
-            lineEl.className = 'cs-step-line' + (step.status === 'done' ? ' done' : '');
+            lineEl.className = 'cs-step-line' + (step.status === 'done' ? ' done' : (step.status === 'rejected' ? ' line-rejected' : ''));
+        }
+
+        if (reasonEl) {
+            if (step.status === 'rejected' && step.reason) {
+                reasonEl.style.display = 'block';
+                const rText = reasonEl.querySelector('.reason-text');
+                if (rText) rText.textContent = step.reason;
+            } else {
+                reasonEl.style.display = 'none';
+            }
         }
     });
 

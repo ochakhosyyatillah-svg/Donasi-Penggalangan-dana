@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 require_once __DIR__ . '/../assets/config/database.php';
 
@@ -21,26 +21,70 @@ $namaPengusul = $currentUser['nama'] ?? $_SESSION['nama'] ?? 'Pengusul';
 
 // ── Filter Periode ─────────────────────────────────────────────────────
 $now          = new DateTime();
-$periodeStart = trim($_GET['periode_start'] ?? $now->format('Y-09-01'));
-$periodeEnd   = trim($_GET['periode_end']   ?? $now->format('Y-09-30'));
+$preset       = trim($_GET['preset'] ?? '');
+$periodeStart = trim($_GET['periode_start'] ?? '');
+$periodeEnd   = trim($_GET['periode_end']   ?? '');
 
-$dtStart = DateTime::createFromFormat('Y-m-d', $periodeStart) ?: new DateTime($now->format('Y-m-01'));
-$dtEnd   = DateTime::createFromFormat('Y-m-d', $periodeEnd)   ?: new DateTime($now->format('Y-m-t'));
+$hasDateFilter = false;
+$presetActive  = 'this_month';
 
-$periodeLabel = $dtStart->format('j M Y') . ' - ' . $dtEnd->format('j M Y');
+if ($preset === 'all') {
+    $periodeLabel  = 'Semua Periode';
+    $presetActive  = 'all';
+    $hasDateFilter = false;
+} elseif (!empty($periodeStart) && !empty($periodeEnd)) {
+    $dtStart = DateTime::createFromFormat('Y-m-d', $periodeStart);
+    $dtEnd   = DateTime::createFromFormat('Y-m-d', $periodeEnd);
+    if (!$dtStart || !$dtEnd) {
+        $dtStart = new DateTime($now->format('Y-m-01'));
+        $dtEnd   = new DateTime($now->format('Y-m-t'));
+    }
+    $periodeStart  = $dtStart->format('Y-m-d');
+    $periodeEnd    = $dtEnd->format('Y-m-d');
+    $periodeLabel  = $dtStart->format('j M Y') . ' - ' . $dtEnd->format('j M Y');
+    $hasDateFilter = true;
+
+    $todayStr     = $now->format('Y-m-d');
+    $startOfMonth = $now->format('Y-m-01');
+    $endOfMonth   = $now->format('Y-m-t');
+
+    if ($periodeStart === $todayStr && $periodeEnd === $todayStr) {
+        $presetActive = 'today';
+    } elseif ($periodeStart === $startOfMonth && $periodeEnd === $endOfMonth) {
+        $presetActive = 'this_month';
+    } else {
+        $presetActive = 'custom';
+    }
+} else {
+    // Default: Bulan Berjalan
+    $dtStart       = new DateTime($now->format('Y-m-01'));
+    $dtEnd         = new DateTime($now->format('Y-m-t'));
+    $periodeStart  = $dtStart->format('Y-m-d');
+    $periodeEnd    = $dtEnd->format('Y-m-d');
+    $periodeLabel  = $dtStart->format('j M Y') . ' - ' . $dtEnd->format('j M Y');
+    $hasDateFilter = true;
+    $presetActive  = 'this_month';
+}
 
 // ── Hitung 4 Kartu Statistik ───────────────────────────────────────────
 try {
     // Total Dana & Total Transaksi Donasi Berhasil
-    $stmtStats = $pdo->prepare("
+    $statSql = "
         SELECT 
             COALESCE(SUM(d.nominal), 0) AS total_dana,
             COUNT(d.id_donasi) AS total_trx
         FROM donasi d
         JOIN program_donasi p ON d.id_program = p.id_program
         WHERE p.id_pengusul = ? AND d.status_donasi = 'berhasil'
-    ");
-    $stmtStats->execute([$idUser]);
+    ";
+    $statParams = [$idUser];
+    if ($hasDateFilter) {
+        $statSql .= " AND DATE(d.tanggal_donasi) BETWEEN ? AND ?";
+        $statParams[] = $periodeStart;
+        $statParams[] = $periodeEnd;
+    }
+    $stmtStats = $pdo->prepare($statSql);
+    $stmtStats->execute($statParams);
     $statData = $stmtStats->fetch(PDO::FETCH_ASSOC);
 
     $totalDana      = (float)($statData['total_dana'] ?? 0);
@@ -85,6 +129,10 @@ try {
     if ($filterTgl !== '') {
         $whereSql .= " AND DATE(d.tanggal_donasi) = ?";
         $params[] = $filterTgl;
+    } elseif ($hasDateFilter) {
+        $whereSql .= " AND DATE(d.tanggal_donasi) BETWEEN ? AND ?";
+        $params[] = $periodeStart;
+        $params[] = $periodeEnd;
     }
 
     // Hitung total row
@@ -437,7 +485,12 @@ function formatMetode($metode): string {
       margin-top: 3px;
     }
 
-    /* Filter Periode Box */
+    /* Filter Periode Box Wrapper & Dropdown */
+    .periode-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
     .periode-box {
       display: inline-flex;
       align-items: center;
@@ -453,9 +506,163 @@ function formatMetode($metode): string {
       position: relative;
       user-select: none;
       box-shadow: 0 1px 2px rgba(0,0,0,.03);
+      transition: all 0.2s ease;
     }
+
+    .periode-box:hover {
+      border-color: #94a3b8;
+      background: #f8fafc;
+    }
+
+    .periode-box.active {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
+    }
+
     .periode-box i.cal-icon { color: #64748b; font-size: 0.95rem; }
-    .periode-box i.chev-icon { color: #64748b; font-size: 0.75rem; margin-left: 6px; }
+    .periode-box i.chev-icon {
+      color: #64748b;
+      font-size: 0.75rem;
+      margin-left: 6px;
+      transition: transform 0.2s ease;
+    }
+    .periode-box.active i.chev-icon {
+      transform: rotate(180deg);
+    }
+
+    .periode-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 320px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.12), 0 4px 10px -2px rgba(0, 0, 0, 0.04);
+      z-index: 1000;
+      padding: 16px;
+      animation: fadeIn 0.15s ease-out;
+    }
+
+    .periode-dropdown-header {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 12px;
+    }
+
+    .periode-presets {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 7px;
+      margin-bottom: 12px;
+    }
+
+    .preset-btn {
+      padding: 8px 10px;
+      background: #f1f5f9;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .preset-btn:hover {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+
+    .preset-btn.active {
+      background: #e0f2fe;
+      color: #0284c7;
+      border-color: #bae6fd;
+    }
+
+    .periode-divider {
+      height: 1px;
+      background: #f1f5f9;
+      margin: 12px 0;
+    }
+
+    .periode-custom-form .periode-inputs-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .periode-input-group {
+      flex: 1;
+    }
+
+    .periode-input-group label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+
+    .periode-input-group input[type="date"] {
+      width: 100%;
+      padding: 7px 8px;
+      font-size: 0.76rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #334155;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+
+    .periode-input-group input[type="date"]:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+    }
+
+    .periode-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .btn-periode-cancel {
+      padding: 7px 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #64748b;
+      background: transparent;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .btn-periode-cancel:hover {
+      background: #f8fafc;
+    }
+
+    .btn-periode-apply {
+      padding: 7px 16px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #ffffff;
+      background: var(--primary);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+
+    .btn-periode-apply:hover {
+      background: var(--primary-hover);
+    }
 
     /* ── Top 4 Stat Cards ── */
     .stats-grid {
@@ -997,10 +1204,7 @@ function formatMetode($metode): string {
           <i class="fa-solid fa-bars"></i>
         </button>
         <div class="header-right">
-          <div class="notif-btn" title="Pemberitahuan">
-            <i class="fa-regular fa-bell"></i>
-            <span class="notif-badge"></span>
-          </div>
+          <?php include __DIR__ . '/../includes/pengusul_notifikasi.php'; ?>
         </div>
       </header>
 
@@ -1018,10 +1222,48 @@ function formatMetode($metode): string {
             </div>
           </div>
 
-          <div class="periode-box">
-            <i class="fa-regular fa-calendar cal-icon"></i>
-            <span><?= htmlspecialchars($periodeLabel) ?></span>
-            <i class="fa-solid fa-chevron-down chev-icon"></i>
+          <div class="periode-wrapper" id="periodeWrapper">
+            <button type="button" class="periode-box" id="btnPeriodeToggle" onclick="togglePeriodeDropdown()">
+              <i class="fa-regular fa-calendar cal-icon"></i>
+              <span id="periodeLabelText"><?= htmlspecialchars($periodeLabel) ?></span>
+              <i class="fa-solid fa-chevron-down chev-icon"></i>
+            </button>
+
+            <!-- Dropdown Popover Filter Tanggal -->
+            <div class="periode-dropdown" id="periodeDropdown" style="display: none;">
+              <div class="periode-dropdown-header">Pilih Rentang Tanggal</div>
+
+              <div class="periode-presets">
+                <button type="button" class="preset-btn <?= ($presetActive === 'today') ? 'active' : '' ?>" onclick="setPeriodePreset('today')">Hari Ini</button>
+                <button type="button" class="preset-btn <?= ($presetActive === 'last7') ? 'active' : '' ?>" onclick="setPeriodePreset('last7')">7 Hari Terakhir</button>
+                <button type="button" class="preset-btn <?= ($presetActive === 'this_month') ? 'active' : '' ?>" onclick="setPeriodePreset('this_month')">Bulan Ini</button>
+                <button type="button" class="preset-btn <?= ($presetActive === 'last_month') ? 'active' : '' ?>" onclick="setPeriodePreset('last_month')">Bulan Lalu</button>
+                <button type="button" class="preset-btn <?= ($presetActive === 'this_year') ? 'active' : '' ?>" onclick="setPeriodePreset('this_year')">Tahun Ini</button>
+                <button type="button" class="preset-btn <?= ($presetActive === 'all') ? 'active' : '' ?>" onclick="setPeriodePreset('all')">Semua Waktu</button>
+              </div>
+
+              <div class="periode-divider"></div>
+
+              <form method="GET" action="" id="formPeriodeCustom" class="periode-custom-form">
+                <?php if (!empty($searchQ)): ?>
+                  <input type="hidden" name="q" value="<?= htmlspecialchars($searchQ) ?>">
+                <?php endif; ?>
+                <div class="periode-inputs-row">
+                  <div class="periode-input-group">
+                    <label>Dari Tanggal</label>
+                    <input type="date" name="periode_start" id="inputPeriodeStart" value="<?= htmlspecialchars($periodeStart) ?>" required>
+                  </div>
+                  <div class="periode-input-group">
+                    <label>Sampai Tanggal</label>
+                    <input type="date" name="periode_end" id="inputPeriodeEnd" value="<?= htmlspecialchars($periodeEnd) ?>" required>
+                  </div>
+                </div>
+                <div class="periode-actions">
+                  <button type="button" class="btn-periode-cancel" onclick="togglePeriodeDropdown(false)">Batal</button>
+                  <button type="submit" class="btn-periode-apply">Terapkan</button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
 
@@ -1095,17 +1337,33 @@ function formatMetode($metode): string {
 
             <!-- Toolbar Search & Filter Tanggal -->
             <form method="GET" action="" class="riwayat-controls" id="filterForm">
+              <?php if (!empty($periodeStart) && !empty($periodeEnd)): ?>
+                <input type="hidden" name="periode_start" value="<?= htmlspecialchars($periodeStart) ?>">
+                <input type="hidden" name="periode_end" value="<?= htmlspecialchars($periodeEnd) ?>">
+              <?php elseif (!empty($preset)): ?>
+                <input type="hidden" name="preset" value="<?= htmlspecialchars($preset) ?>">
+              <?php endif; ?>
+
               <div class="search-box-wrap">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input type="text" name="q" id="searchInput" placeholder="Cari nama donatur / program..." value="<?= htmlspecialchars($searchQ) ?>">
               </div>
 
-              <div style="position:relative;">
+              <div style="position:relative; display:inline-flex; align-items:center; gap:6px;">
                 <button type="button" class="btn-filter-tanggal" id="btnFilterTgl">
                   <span><?= !empty($filterTgl) ? date('d M Y', strtotime($filterTgl)) : 'Filter Tanggal' ?></span>
                   <i class="fa-solid fa-chevron-down chev-icon"></i>
                 </button>
-                <input type="date" name="tgl" id="hiddenDateInput" value="<?= htmlspecialchars($filterTgl) ?>" style="display:none;" onchange="document.getElementById('filterForm').submit()">
+                <?php if (!empty($filterTgl)): ?>
+                  <?php 
+                    $paramsReset = $_GET;
+                    unset($paramsReset['tgl']);
+                  ?>
+                  <a href="?<?= http_build_query($paramsReset) ?>" title="Hapus Filter Tanggal" style="color:#ef4444; font-size:0.85rem; width:28px; height:28px; border-radius:50%; background:#fee2e2; display:flex; align-items:center; justify-content:center; text-decoration:none;">
+                    <i class="fa-solid fa-xmark"></i>
+                  </a>
+                <?php endif; ?>
+                <input type="date" name="tgl" id="hiddenDateInput" value="<?= htmlspecialchars($filterTgl) ?>" style="position:absolute; opacity:0; width:1px; height:1px; pointer-events:none; left:0; bottom:0;" onchange="document.getElementById('filterForm').submit()">
               </div>
             </form>
           </div>
@@ -1246,15 +1504,88 @@ function formatMetode($metode): string {
     if (mobileToggleBtn) mobileToggleBtn.addEventListener('click', toggleSidebar);
     if (overlay) overlay.addEventListener('click', toggleSidebar);
 
-    // ── Filter Tanggal Picker ──
+    // ── Filter Periode Popover ──
+    function togglePeriodeDropdown(forceState) {
+      const box = document.getElementById('btnPeriodeToggle');
+      const dropdown = document.getElementById('periodeDropdown');
+      if (!dropdown || !box) return;
+
+      const isOpen = (typeof forceState === 'boolean') ? forceState : dropdown.style.display !== 'block';
+      dropdown.style.display = isOpen ? 'block' : 'none';
+      box.classList.toggle('active', isOpen);
+    }
+
+    function setPeriodePreset(type) {
+      const now = new Date();
+      let start = '';
+      let end = '';
+
+      const formatDate = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+
+      if (type === 'today') {
+        start = formatDate(now);
+        end = formatDate(now);
+      } else if (type === 'last7') {
+        const d7 = new Date();
+        d7.setDate(now.getDate() - 6);
+        start = formatDate(d7);
+        end = formatDate(now);
+      } else if (type === 'this_month') {
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        start = formatDate(firstDay);
+        end = formatDate(lastDay);
+      } else if (type === 'last_month') {
+        const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+        start = formatDate(firstDay);
+        end = formatDate(lastDay);
+      } else if (type === 'this_year') {
+        start = `${now.getFullYear()}-01-01`;
+        end = `${now.getFullYear()}-12-31`;
+      } else if (type === 'all') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('preset', 'all');
+        url.searchParams.delete('periode_start');
+        url.searchParams.delete('periode_end');
+        window.location.href = url.toString();
+        return;
+      }
+
+      const url = new URL(window.location.href);
+      url.searchParams.delete('preset');
+      url.searchParams.set('periode_start', start);
+      url.searchParams.set('periode_end', end);
+      window.location.href = url.toString();
+    }
+
+    // Klik di luar dropdown periode untuk menutup
+    document.addEventListener('click', (e) => {
+      const wrap = document.getElementById('periodeWrapper');
+      if (wrap && !wrap.contains(e.target)) {
+        togglePeriodeDropdown(false);
+      }
+    });
+
+    // ── Filter Tanggal Picker (Tabel) ──
     const btnFilterTgl = document.getElementById('btnFilterTgl');
     const hiddenDateInput = document.getElementById('hiddenDateInput');
 
     if (btnFilterTgl && hiddenDateInput) {
-      btnFilterTgl.addEventListener('click', () => {
-        if (hiddenDateInput.showPicker) {
-          hiddenDateInput.showPicker();
-        } else {
+      btnFilterTgl.addEventListener('click', (e) => {
+        e.preventDefault();
+        try {
+          if (typeof hiddenDateInput.showPicker === 'function') {
+            hiddenDateInput.showPicker();
+          } else {
+            hiddenDateInput.click();
+          }
+        } catch (err) {
           hiddenDateInput.click();
         }
       });

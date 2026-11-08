@@ -523,7 +523,7 @@ require_once '../includes/header.php';
             <button type="button" class="ub-btn-submit" onclick="menujuCekStatusDonasi()" style="width:100%; justify-content:center; padding:13px 20px; font-size:0.92rem;">
                 <i class="fas fa-search"></i> Cek Status Donasi Sekarang &rarr;
             </button>
-            <button type="button" class="ub-btn-back" onclick="window.location.href='index.php'" style="width:100%; justify-content:center; padding:12px; border:1px solid #cbd5e1; border-radius:50px; background:#f8fafc; color:#334155; font-weight:600; cursor:pointer;">
+            <button type="button" class="ub-btn-back" onclick="window.location.href='/Donasi/index.php'" style="width:100%; justify-content:center; padding:12px; border:1px solid #cbd5e1; border-radius:50px; background:#f8fafc; color:#334155; font-weight:600; cursor:pointer;">
                 <i class="fas fa-home"></i> Kembali ke Beranda
             </button>
         </div>

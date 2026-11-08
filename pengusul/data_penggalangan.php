@@ -951,10 +951,7 @@ function kategoriIcon($kat): string {
           <i class="fa-solid fa-bars"></i>
         </button>
         <div class="header-right">
-          <div class="notif-btn" title="Pemberitahuan">
-            <i class="fa-regular fa-bell"></i>
-            <span class="notif-badge"></span>
-          </div>
+          <?php include __DIR__ . '/../includes/pengusul_notifikasi.php'; ?>
         </div>
       </header>
 

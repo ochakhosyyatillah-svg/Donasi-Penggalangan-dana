@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once __DIR__ . '/../assets/config/database.php';
 
@@ -415,7 +415,7 @@ $tglBuat    = !empty($prog['dibuat_pada'])      ? date('d M Y', strtotime($prog[
       <header class="top-header">
         <button id="mobileSidebarToggle" class="mobile-toggle-btn"><i class="fa-solid fa-bars"></i></button>
         <div class="header-right">
-          <div class="notif-btn"><i class="fa-regular fa-bell"></i><span class="notif-badge"></span></div>
+          <?php include __DIR__ . '/../includes/pengusul_notifikasi.php'; ?>
         </div>
       </header>
 

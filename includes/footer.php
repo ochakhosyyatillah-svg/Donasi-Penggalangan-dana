@@ -6,62 +6,38 @@
                 <a href="/Donasi/" class="nav-logo">
                     <img src="/Donasi/assets/img/logo_donasi.png" alt="SIBERASA" style="height: 48px;">
                 </a>
-                <p class="brand-desc">Bersama kita wujudkan kebaikan,<br>untuk membantu sesama dan<br>membangun masa depan yang lebih baik.</p>
-                <div class="footer-new-socials">
-                    <a href="#" class="social-btn"><i class="fab fa-instagram"></i></a>
-                    <a href="#" class="social-btn"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#" class="social-btn"><i class="fab fa-youtube"></i></a>
-                    <a href="#" class="social-btn"><i class="fab fa-x-twitter"></i></a>
+                <p class="brand-desc">Bersama kita wujudkan kebaikan, untuk membantu sesama dan membangun masa depan yang lebih baik melalui sistem donasi terpercaya.</p>
+                <div class="footer-new-socials" style="display: flex; flex-direction: row; align-items: center; gap: 12px;">
+                    <a href="#" class="social-btn" title="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="social-btn" title="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="social-btn" title="YouTube"><i class="fab fa-youtube"></i></a>
+                    <a href="#" class="social-btn" title="X (Twitter)"><i class="fab fa-x-twitter"></i></a>
                 </div>
             </div>
             
             <div class="footer-new-col">
-                <h5>Tautan Cepat</h5>
+                <h5>Program &amp; Donasi</h5>
                 <ul>
                     <li><a href="/Donasi/"><i class="fas fa-chevron-right"></i> Beranda</a></li>
                     <li><a href="/Donasi/donatur/program.php"><i class="fas fa-chevron-right"></i> Program Donasi</a></li>
                     <li><a href="/Donasi/donatur/galangdana.php"><i class="fas fa-chevron-right"></i> Galang Dana</a></li>
-                    <li><a href="/Donasi/donatur/cek_status.php"><i class="fas fa-chevron-right"></i> Cek Status</a></li>
-                    <li><a href="/Donasi/donatur/tentang.php"><i class="fas fa-chevron-right"></i> Tentang Kami</a></li>
-                    <li><a href="/Donasi/donatur/kontak.php"><i class="fas fa-chevron-right"></i> Kontak</a></li>
+                    <li><a href="/Donasi/donatur/cek_status.php"><i class="fas fa-chevron-right"></i> Cek Status Donasi</a></li>
                 </ul>
             </div>
-            
-            <div class="footer-new-col">
-                <h5>Hubungi Kami</h5>
-                <div class="footer-new-contact-item">
-                    <div class="icon-circle"><i class="fas fa-map-marker-alt"></i></div>
-                    <div class="contact-text">Jl. Pendidikan No. 123<br>Kota Cirebon, Jawa Barat</div>
-                </div>
-                <div class="footer-new-contact-item">
-                    <div class="icon-circle"><i class="fas fa-envelope"></i></div>
-                    <div class="contact-text">info@donasi.org</div>
-                </div>
-                <div class="footer-new-contact-item">
-                    <div class="icon-circle"><i class="fas fa-phone-alt"></i></div>
-                    <div class="contact-text">(0231) 1234 5678</div>
-                </div>
-                <div class="footer-new-contact-item">
-                    <div class="icon-circle"><i class="far fa-clock"></i></div>
-                    <div class="contact-text">Senin - Jumat<br>08.00 - 16.00 WIB</div>
-                </div>
-            </div>
 
-            <div class="footer-new-col footer-newsletter">
-                <h5>Berlangganan Newsletter</h5>
-                <p>Dapatkan informasi terbaru mengenai<br>program donasi dan kegiatan kami.</p>
-                <form class="newsletter-form" onsubmit="return false;">
-                    <div class="input-wrap">
-                        <i class="far fa-envelope"></i>
-                        <input type="email" placeholder="Masukkan email Anda" required>
-                    </div>
-                    <button type="submit" class="btn-subscribe">Berlangganan &rarr;</button>
-                </form>
+            <div class="footer-new-col">
+                <h5>Informasi &amp; Layanan</h5>
+                <ul>
+                    <li><a href="/Donasi/donatur/tentang.php"><i class="fas fa-chevron-right"></i> Tentang SIBERASA</a></li>
+                    <li><a href="/Donasi/donatur/kontak.php"><i class="fas fa-chevron-right"></i> Kontak Kami</a></li>
+                    <li><a href="#"><i class="fas fa-chevron-right"></i> Syarat &amp; Ketentuan</a></li>
+                    <li><a href="#"><i class="fas fa-chevron-right"></i> Kebijakan Privasi</a></li>
+                </ul>
             </div>
         </div>
         
         <div class="footer-new-bottom">
-            <p>&copy; <?= date('Y') ?> Sistem Donasi &amp; Pengumpulan Dana. All rights reserved.</p>
+            <p>&copy; <?= date('Y') ?> SIBERASA - Sistem Donasi &amp; Pengumpulan Dana. All rights reserved.</p>
             <div class="footer-new-bottom-links">
                 <a href="#">Privasi</a> <span class="sep">|</span>
                 <a href="#">Syarat &amp; Ketentuan</a> <span class="sep">|</span>

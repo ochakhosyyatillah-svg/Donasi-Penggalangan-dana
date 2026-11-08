@@ -1044,9 +1044,13 @@ section { padding: 60px 0; }
 
 .footer-new-grid {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr 1.5fr;
-  gap: 40px;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 60px;
   padding-bottom: 48px;
+}
+
+.footer-new-brand {
+  max-width: 480px;
 }
 
 .footer-new-brand .nav-logo {
@@ -1055,14 +1059,17 @@ section { padding: 60px 0; }
 }
 
 .footer-new-brand .brand-desc {
-  font-size: 0.85rem;
-  line-height: 1.7;
-  margin-bottom: 20px;
+  font-size: 0.88rem;
+  line-height: 1.75;
+  color: #5a7698;
+  margin-bottom: 22px;
 }
 
 .footer-new-socials {
-  display: flex;
-  gap: 10px;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 12px;
 }
 
 .footer-new-socials .social-btn {
@@ -1436,7 +1443,8 @@ section { padding: 60px 0; }
   .programs-grid { grid-template-columns: repeat(2, 1fr); }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .how-grid { grid-template-columns: repeat(2, 1fr); }
-  .footer-new-grid { grid-template-columns: 1fr 1fr; }
+  .footer-new-grid { grid-template-columns: 1fr 1fr; gap: 40px; }
+  .footer-new-brand { grid-column: span 2; max-width: 100%; }
 }
 
 @media (max-width: 768px) {
@@ -1465,7 +1473,8 @@ section { padding: 60px 0; }
   .testi-grid { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .how-grid { grid-template-columns: 1fr 1fr; }
-  .footer-new-grid { grid-template-columns: 1fr; }
+  .footer-new-grid { grid-template-columns: 1fr; gap: 32px; }
+  .footer-new-brand { grid-column: span 1; }
   .footer-new-bottom { flex-direction: column; text-align: center; }
   .section-header { flex-direction: column; align-items: flex-start; }
   .program-section-wrapper { padding: 16px; }
