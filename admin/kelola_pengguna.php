@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 require_once __DIR__ . '/../assets/config/database.php';
 
@@ -711,9 +711,7 @@ td.no-data{
       </button>
     </div>
     <div>
-      <button class="notif-btn" aria-label="Notifikasi">
-        <i class="far fa-bell"></i>
-      </button>
+      <?php include __DIR__ . '/../includes/admin_notifikasi.php'; ?>
     </div>
   </header>
 

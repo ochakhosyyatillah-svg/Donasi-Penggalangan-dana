@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 require_once __DIR__ . '/../assets/config/database.php';
 
@@ -762,9 +762,7 @@ textarea.form-control{resize:vertical;min-height:90px}
       </button>
     </div>
     <div>
-      <button class="notif-btn" aria-label="Notifikasi">
-        <i class="far fa-bell"></i>
-      </button>
+      <?php include __DIR__ . '/../includes/admin_notifikasi.php'; ?>
     </div>
   </header>
 

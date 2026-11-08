@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -829,12 +829,7 @@ ul{list-style:none}
       </div>
     </div>
     <div class="topbar-right">
-      <button class="notif-btn" id="notifBtn" aria-label="Notifikasi">
-        <i class="far fa-bell"></i>
-        <?php if ($menungguVerif > 0): ?>
-          <span class="badge"></span>
-        <?php endif; ?>
-      </button>
+      <?php include __DIR__ . '/../includes/admin_notifikasi.php'; ?>
     </div>
   </header>
 
